@@ -12,8 +12,10 @@ def non_negativity(matrix: np.ndarray) -> np.ndarray:
     Returns:
     - np.ndarray: The matrix with non-negativity applied.
     """
-    matrix[matrix < 0] = 0
-    return matrix
+    # Create a copy to avoid modifying the original matrix
+    result = matrix.copy()
+    result[result < 0] = 0
+    return result
 
 # 未来可以添加更多约束函数
 # def norm_constraint(matrix: np.ndarray, axis=1) -> np.ndarray:

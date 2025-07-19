@@ -75,7 +75,9 @@ class MCRALS:
             # --- Step A: Solve for C, given S ---
             # C = D * pinv(S) = D * S * (S.T * S)^-1
             # Using pseudoinverse (pinv) for numerical stability
-            C = D @ np.linalg.pinv(S)
+            S_pinv = np.linalg.pinv(S)
+            # C = D @ S_pinv.T since S_pinv is (k, n) and we need (m, k)
+            C = D @ S_pinv.T
             
             # Apply constraints on C
             C = constraints.non_negativity(C)
@@ -83,7 +85,9 @@ class MCRALS:
             # --- Step B: Solve for S, given C ---
             # S = pinv(C) * D = (C.T * C)^-1 * C.T * D
             # Transposing the equation: S.T = pinv(C) * D -> S = D.T * pinv(C.T)
-            S = D.T @ np.linalg.pinv(C)
+            C_pinv = np.linalg.pinv(C)
+            # S = D.T @ C_pinv.T since C_pinv is (k, m) and we need (n, k)
+            S = D.T @ C_pinv.T
 
             # Apply constraints on S
             S = constraints.non_negativity(S)
