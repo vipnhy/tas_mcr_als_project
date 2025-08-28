@@ -1,0 +1,8 @@
+{
+  "file_path": "data/TAS/TA_Average-crop-TCA-tzs-tzs-tzs-chirp.csv",
+  "file_type": "handle",
+  "wavelength_range": [420, 750],
+  "delay_range": [0.1, 50],
+  "n_components": 3,
+  "language": "english"
+}

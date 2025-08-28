@@ -1,0 +1,26 @@
+{
+  "description": "TAS MCR-ALS 分析配置文件示例",
+  "analysis_name": "TA_Average_crop_analysis",
+  "file_path": "data/TAS/TA_Average-crop-TCA-tzs-tzs-tzs-chirp.csv",
+  "file_type": "handle",
+  "wavelength_range": [420, 750],
+  "delay_range": [0.1, 50],
+  "n_components": 3,
+  "language": "chinese",
+  "mcr_settings": {
+    "max_iter": 200,
+    "tol": 1e-7
+  },
+  "output_settings": {
+    "save_plots": true,
+    "save_results": true,
+    "output_dir": "results_TA_Average"
+  },
+  "notes": [
+    "wavelength_range: 选择感兴趣的波长范围，单位nm",
+    "delay_range: 选择时间延迟范围，单位ps",
+    "n_components: MCR-ALS组分数量，建议从2-4开始尝试",
+    "file_type: 'handle'为处理后数据，'raw'为原始数据",
+    "language: 'chinese'或'english'，控制图表标签语言"
+  ]
+}

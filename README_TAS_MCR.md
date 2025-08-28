@@ -40,9 +40,34 @@ pip install numpy matplotlib pandas scikit-learn scipy
 ```
 
 ### 运行主程序
+
+#### 方法1: 直接运行 main.py
 ```bash
 cd "d:\TAS\tas_mcr_als_project"
 & "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" main.py
+```
+
+#### 方法2: 使用参数化运行工具 run_main.py (推荐)
+
+**命令行参数方式:**
+```bash
+# 基本用法
+& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --file_path "data/TAS/TA_Average.csv" --n_components 3
+
+# 完整参数
+& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --file_path "data/TAS/TA_Average-crop-TCA-tzs-tzs-tzs-chirp.csv" --file_type handle --wavelength_range 420 750 --delay_range 0.1 50 --n_components 3 --save_plots --save_results
+```
+
+**配置文件方式:**
+```bash
+# 使用配置文件
+& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --config config_example.json
+```
+
+**交互式输入方式:**
+```bash
+# 交互式参数输入
+& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py
 ```
 
 ### 运行测试
@@ -64,9 +89,41 @@ cd "d:\TAS\tas_mcr_als_project"
   - `"handle"`: 处理后的数据格式
 
 ### 参数设置
+- `file_path`: TAS数据文件路径
+- `file_type`: 文件类型 ("handle" 为处理后数据, "raw" 为原始数据)
 - `wavelength_range`: 波长范围筛选，例如 (420, 750)
 - `delay_range`: 时间延迟范围筛选，例如 (0.1, 50)
 - `n_components`: MCR-ALS 组分数量，建议从 2-4 开始尝试
+
+### run_main.py 参数详解
+
+#### 必需参数
+- `--file_path`: TAS数据文件的路径
+
+#### 可选参数
+- `--file_type`: 文件类型，默认 "handle"
+- `--wavelength_range`: 波长范围，默认 [400, 800]
+- `--delay_range`: 时间延迟范围，默认 [0, 10]
+- `--n_components`: 组分数量，默认 3
+- `--max_iter`: 最大迭代次数，默认 200
+- `--tol`: 收敛容差，默认 1e-7
+- `--save_plots`: 保存图表到文件
+- `--save_results`: 保存数值结果到文件
+- `--output_dir`: 输出目录，默认 "results"
+- `--language`: 界面语言，可选 "chinese" 或 "english"，默认 "chinese"
+- `--config`: 从JSON配置文件读取参数
+
+#### 配置文件格式 (JSON)
+```json
+{
+  "file_path": "data/TAS/TA_Average.csv",
+  "file_type": "handle",
+  "wavelength_range": [420, 750],
+  "delay_range": [0.1, 50],
+  "n_components": 3,
+  "language": "chinese"
+}
+```
 
 ## 输出结果
 
@@ -107,20 +164,25 @@ origin='lower'  # 确保y轴从底部开始
 ```
 tas_mcr_als_project/
 ├── main.py                    # 主分析程序
-├── requirements.txt           # 依赖包列表
+├── run_main.py               # 参数化运行工具 (推荐使用)
+├── config_example.json       # 配置文件示例 (中文)
+├── config_english.json       # 英文配置文件示例
+├── config_detailed.json      # 详细配置文件示例
+├── requirements.txt          # 依赖包列表
 ├── data/
-│   ├── data.py               # 数据读取模块
-│   └── TAS/                  # TAS 数据文件夹
+│   ├── data.py              # 数据读取模块
+│   └── TAS/                 # TAS 数据文件夹
 ├── mcr/
-│   ├── mcr_als.py           # MCR-ALS 算法实现
-│   ├── constraints.py       # 约束条件
-│   └── initializers.py      # 初始化方法
+│   ├── mcr_als.py          # MCR-ALS 算法实现
+│   ├── constraints.py      # 约束条件
+│   └── initializers.py     # 初始化方法
 ├── test/
-│   ├── test_MCR_ALS.py      # 基本功能测试
-│   └── test_real_data.py    # 实际数据测试
-└── utils/
-    ├── metrics.py           # 评估指标
-    └── plotting.py          # 绘图工具
+│   ├── test_MCR_ALS.py     # 基本功能测试
+│   └── test_real_data.py   # 实际数据测试
+├── utils/
+│   ├── metrics.py          # 评估指标
+│   └── plotting.py         # 绘图工具
+└── results/                 # 输出结果目录 (自动创建)
 ```
 
 ## 在测试文件夹中导入主目录模块的方法
@@ -175,6 +237,42 @@ python test/test_MCR_ALS.py
 - 检查数据预处理是否恰当
 
 ## 扩展功能
+
+### run_main.py 的优势
+1. **参数化运行**: 无需修改源代码即可改变分析参数
+2. **批量处理**: 可以通过脚本批量处理多个文件
+3. **结果保存**: 自动保存分析结果和图表
+4. **配置管理**: 支持配置文件，便于参数管理和重现分析
+5. **交互式模式**: 适合初学者的友好界面
+6. **多语言支持**: 支持中文和英文界面，图表标签自动适配
+7. **字体优化**: 自动处理中文字体显示问题
+
+### 使用示例
+
+#### 示例1: 快速分析单个文件
+```bash
+& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --file_path "data/TAS/TA_Average.csv" --n_components 3 --save_plots
+```
+
+#### 示例2: 优化波长和时间范围
+```bash
+& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --file_path "data/TAS/TA_Average.csv" --wavelength_range 450 700 --delay_range 1 100 --n_components 4 --save_results --output_dir "results_optimized"
+```
+
+#### 示例3: 使用配置文件进行标准化分析
+```bash
+# 中文界面
+& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --config config_example.json
+
+# 英文界面
+& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --config config_english.json
+```
+
+#### 示例4: 指定语言和输出目录
+```bash
+# 英文界面，保存结果
+& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --file_path "data/TAS/TA_Average.csv" --language english --save_plots --save_results --output_dir "results_en"
+```
 
 可以进一步添加的功能：
 - 更多约束条件（非负性、单峰性等）

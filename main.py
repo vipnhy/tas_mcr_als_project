@@ -1,8 +1,27 @@
 # main.py
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+from matplotlib import rcParams
 from mcr.mcr_als import MCRALS
 from data.data import read_file
+
+# 设置中文字体支持
+def setup_chinese_fonts():
+    """设置matplotlib中文字体"""
+    chinese_fonts = ['SimHei', 'Microsoft YaHei', 'SimSun', 'KaiTi']
+    for font in chinese_fonts:
+        try:
+            rcParams['font.sans-serif'] = [font]
+            rcParams['axes.unicode_minus'] = False
+            break
+        except:
+            continue
+    else:
+        print("警告: 未找到合适的中文字体")
+
+# 初始化字体
+setup_chinese_fonts()
 
 # --- 1. Generate Synthetic Data (for demonstration) ---
 # In a real scenario, this would be in `data/synthetic_data.py`
