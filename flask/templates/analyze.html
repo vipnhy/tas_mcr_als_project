@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}分析中 - TAS MCR-ALS 分析平台{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- 分析信息卡片 -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-cogs me-2"></i>
+                    MCR-ALS 分析
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>文件信息</h6>
+                        <p><strong>文件名:</strong> {{ session_info.filename }}</p>
+                        <p><strong>上传时间:</strong> {{ session_info.upload_time[:19] }}</p>
+                        <p><strong>会话ID:</strong> {{ session_info.session_id }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>分析参数</h6>
+                        <p><strong>文件类型:</strong> {{ session_info.parameters.file_type }}</p>
+                        <p><strong>波长范围:</strong> {{ session_info.parameters.wavelength_range[0] }} - {{ session_info.parameters.wavelength_range[1] }} nm</p>
+                        <p><strong>时间延迟:</strong> {{ session_info.parameters.delay_range[0] }} - {{ session_info.parameters.delay_range[1] }} ps</p>
+                        <p><strong>组分数量:</strong> {{ session_info.parameters.n_components }}</p>
+                        <p><strong>最大迭代:</strong> {{ session_info.parameters.max_iter }}</p>
+                        <p><strong>界面语言:</strong> {{ session_info.parameters.language }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分析进度 -->
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="mb-0">分析进度</h5>
+            </div>
+            <div class="card-body">
+                <!-- 进度条 -->
+                <div class="progress mb-4" style="height: 25px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         id="progressBar" role="progressbar" style="width: 0%">
+                        <span id="progressText">准备开始...</span>
+                    </div>
+                </div>
+
+                <!-- 分析步骤 -->
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="step" id="step1">
+                            <div class="step-icon mb-2">
+                                <i class="fas fa-upload fa-2x text-muted" id="icon1"></i>
+                            </div>
+                            <h6>数据加载</h6>
+                            <p class="small text-muted" id="status1">等待开始</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="step" id="step2">
+                            <div class="step-icon mb-2">
+                                <i class="fas fa-calculator fa-2x text-muted" id="icon2"></i>
+                            </div>
+                            <h6>MCR-ALS分析</h6>
+                            <p class="small text-muted" id="status2">等待开始</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="step" id="step3">
+                            <div class="step-icon mb-2">
+                                <i class="fas fa-chart-line fa-2x text-muted" id="icon3"></i>
+                            </div>
+                            <h6>生成图表</h6>
+                            <p class="small text-muted" id="status3">等待开始</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="step" id="step4">
+                            <div class="step-icon mb-2">
+                                <i class="fas fa-save fa-2x text-muted" id="icon4"></i>
+                            </div>
+                            <h6>保存结果</h6>
+                            <p class="small text-muted" id="status4">等待开始</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分析日志 -->
+                <div class="mt-4">
+                    <h6>分析日志</h6>
+                    <div class="card bg-dark text-light">
+                        <div class="card-body" style="height: 200px; overflow-y: auto;">
+                            <div id="logOutput">
+                                <div class="log-entry">
+                                    <span class="text-muted">[{{ session_info.upload_time[:19] }}]</span>
+                                    文件上传完成，准备开始分析...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="mt-4 d-flex gap-2">
+                    <button type="button" class="btn btn-primary" id="startAnalysis">
+                        <i class="fas fa-play me-2"></i>开始分析
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancelAnalysis" disabled>
+                        <i class="fas fa-stop me-2"></i>取消分析
+                    </button>
+                    <a href="{{ url_for('results', session_id=session_info.session_id) }}" 
+                       class="btn btn-success" id="viewResults" style="display: none;">
+                        <i class="fas fa-eye me-2"></i>查看结果
+                    </a>
+                    <a href="{{ url_for('upload_file') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-upload me-2"></i>上传新文件
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let analysisInProgress = false;
+let sessionId = '{{ session_info.session_id }}';
+
+// 页面加载完成后检查状态
+document.addEventListener('DOMContentLoaded', function() {
+    checkAnalysisStatus();
+});
+
+// 开始分析
+document.getElementById('startAnalysis').addEventListener('click', function() {
+    if (analysisInProgress) return;
+    
+    analysisInProgress = true;
+    this.disabled = true;
+    document.getElementById('cancelAnalysis').disabled = false;
+    
+    runAnalysis();
+});
+
+// 取消分析
+document.getElementById('cancelAnalysis').addEventListener('click', function() {
+    if (confirm('确定要取消当前分析吗？')) {
+        analysisInProgress = false;
+        this.disabled = true;
+        document.getElementById('startAnalysis').disabled = false;
+        addLogEntry('用户取消了分析', 'warning');
+    }
+});
+
+// 运行分析
+function runAnalysis() {
+    addLogEntry('开始MCR-ALS分析...', 'info');
+    updateProgress(0, '开始分析...');
+    
+    fetch('/api/run_analysis', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            handleAnalysisSuccess(data);
+        } else {
+            handleAnalysisError(data.message);
+        }
+    })
+    .catch(error => {
+        handleAnalysisError('网络错误: ' + error.message);
+    });
+}
+
+// 处理分析成功
+function handleAnalysisSuccess(data) {
+    let currentStep = 0;
+    const steps = data.results.steps;
+    
+    steps.forEach((step, index) => {
+        setTimeout(() => {
+            currentStep = index + 1;
+            updateStepStatus(currentStep, step.result);
+            updateProgress((currentStep / 4) * 100, getStepDescription(currentStep));
+            
+            if (step.result.success) {
+                addLogEntry(`${getStepDescription(currentStep)} 完成`, 'success');
+            } else {
+                addLogEntry(`${getStepDescription(currentStep)} 失败: ${step.result.message}`, 'error');
+            }
+            
+            // 分析完成
+            if (currentStep === 4) {
+                if (data.results.summary && data.results.summary.success) {
+                    const summary = data.results.summary.summary;
+                    addLogEntry(`分析完成！迭代次数: ${summary.results.iterations}, 最终LOF: ${summary.results.final_lof.toFixed(4)}%`, 'success');
+                } else {
+                    addLogEntry('分析完成！', 'success');
+                }
+                
+                analysisInProgress = false;
+                document.getElementById('startAnalysis').style.display = 'none';
+                document.getElementById('cancelAnalysis').disabled = true;
+                document.getElementById('viewResults').style.display = 'inline-block';
+            }
+        }, index * 1000); // 每秒显示一个步骤
+    });
+}
+
+// 处理分析错误
+function handleAnalysisError(message) {
+    analysisInProgress = false;
+    document.getElementById('startAnalysis').disabled = false;
+    document.getElementById('cancelAnalysis').disabled = true;
+    
+    addLogEntry('分析失败: ' + message, 'error');
+    updateProgress(0, '分析失败');
+}
+
+// 更新进度条
+function updateProgress(percent, text) {
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    progressBar.style.width = percent + '%';
+    progressText.textContent = text;
+    
+    if (percent === 100) {
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-success');
+    }
+}
+
+// 更新步骤状态
+function updateStepStatus(stepNumber, result) {
+    const icon = document.getElementById(`icon${stepNumber}`);
+    const status = document.getElementById(`status${stepNumber}`);
+    
+    if (result.success) {
+        icon.className = 'fas fa-check-circle fa-2x text-success';
+        status.textContent = '完成';
+        status.className = 'small text-success';
+    } else {
+        icon.className = 'fas fa-times-circle fa-2x text-danger';
+        status.textContent = '失败';
+        status.className = 'small text-danger';
+    }
+}
+
+// 获取步骤描述
+function getStepDescription(stepNumber) {
+    const descriptions = {
+        1: '数据加载',
+        2: 'MCR-ALS分析',
+        3: '生成图表',
+        4: '保存结果'
+    };
+    return descriptions[stepNumber] || '未知步骤';
+}
+
+// 添加日志条目
+function addLogEntry(message, type = 'info') {
+    const logOutput = document.getElementById('logOutput');
+    const timestamp = new Date().toLocaleTimeString();
+    
+    const iconMap = {
+        'info': 'fas fa-info-circle text-info',
+        'success': 'fas fa-check-circle text-success',
+        'warning': 'fas fa-exclamation-triangle text-warning',
+        'error': 'fas fa-times-circle text-danger'
+    };
+    
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry';
+    logEntry.innerHTML = `
+        <span class="text-muted">[${timestamp}]</span>
+        <i class="${iconMap[type]} me-2"></i>
+        ${message}
+    `;
+    
+    logOutput.appendChild(logEntry);
+    logOutput.scrollTop = logOutput.scrollHeight;
+}
+
+// 检查分析状态
+function checkAnalysisStatus() {
+    fetch(`/api/get_progress/${sessionId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const status = data.status;
+            if (status === 'completed') {
+                // 分析已完成
+                updateProgress(100, '分析完成');
+                document.getElementById('startAnalysis').style.display = 'none';
+                document.getElementById('viewResults').style.display = 'inline-block';
+                addLogEntry('分析已完成，可以查看结果', 'success');
+                
+                // 更新所有步骤为完成状态
+                for (let i = 1; i <= 4; i++) {
+                    updateStepStatus(i, {success: true});
+                }
+            } else if (status === 'analyzing') {
+                // 分析正在进行中
+                analysisInProgress = true;
+                document.getElementById('startAnalysis').disabled = true;
+                document.getElementById('cancelAnalysis').disabled = false;
+                addLogEntry('检测到正在进行的分析...', 'info');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('检查状态失败:', error);
+    });
+}
+</script>
+
+<style>
+.step {
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.step-icon {
+    transition: all 0.3s ease;
+}
+
+.log-entry {
+    margin-bottom: 5px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.progress {
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.1);
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+</style>
+{% endblock %}

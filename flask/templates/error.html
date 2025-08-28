@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}页面出错 - TAS MCR-ALS 分析平台{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-content py-5">
+                <!-- 错误图标 -->
+                <div class="mb-4">
+                    {% if error_code == 404 %}
+                        <i class="fas fa-search fa-5x text-muted"></i>
+                        <h1 class="display-1 text-muted">404</h1>
+                        <h2 class="mb-3">页面未找到</h2>
+                        <p class="text-muted mb-4">
+                            抱歉，您访问的页面不存在或已被移动。
+                        </p>
+                    {% elif error_code == 500 %}
+                        <i class="fas fa-exclamation-triangle fa-5x text-warning"></i>
+                        <h1 class="display-1 text-warning">500</h1>
+                        <h2 class="mb-3">服务器内部错误</h2>
+                        <p class="text-muted mb-4">
+                            服务器遇到了一个错误，无法完成您的请求。请稍后重试。
+                        </p>
+                    {% elif error_code == 413 %}
+                        <i class="fas fa-file-upload fa-5x text-danger"></i>
+                        <h1 class="display-1 text-danger">413</h1>
+                        <h2 class="mb-3">文件过大</h2>
+                        <p class="text-muted mb-4">
+                            上传的文件超过了允许的最大大小（50MB）。请选择较小的文件重新上传。
+                        </p>
+                    {% else %}
+                        <i class="fas fa-exclamation-circle fa-5x text-danger"></i>
+                        <h1 class="display-1 text-danger">{{ error_code or '错误' }}</h1>
+                        <h2 class="mb-3">出现了一些问题</h2>
+                        <p class="text-muted mb-4">
+                            {{ error_message or '请求处理时发生错误，请稍后重试。' }}
+                        </p>
+                    {% endif %}
+                </div>
+
+                <!-- 错误详情（仅在调试模式下显示） -->
+                {% if config.DEBUG and error_details %}
+                <div class="card mb-4 text-start">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-bug me-2"></i>
+                            错误详情 (调试模式)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="text-danger">{{ error_details }}</pre>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 操作按钮 -->
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-home me-2"></i>返回首页
+                    </a>
+                    
+                    <button onclick="history.back()" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>返回上页
+                    </button>
+                    
+                    {% if error_code == 413 %}
+                    <a href="{{ url_for('upload_file') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-upload me-2"></i>重新上传
+                    </a>
+                    {% endif %}
+                    
+                    {% if error_code == 500 %}
+                    <button onclick="window.location.reload()" class="btn btn-outline-warning">
+                        <i class="fas fa-redo me-2"></i>重新加载
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- 帮助信息 -->
+                <div class="mt-5">
+                    <h5>需要帮助？</h5>
+                    <div class="row justify-content-center">
+                        <div class="col-md-10">
+                            <div class="row text-start">
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="fas fa-question-circle text-info me-2"></i>
+                                                常见问题
+                                            </h6>
+                                            <ul class="list-unstyled small">
+                                                <li>• 支持的文件格式：CSV、TXT、DAT</li>
+                                                <li>• 最大文件大小：50MB</li>
+                                                <li>• 建议使用Chrome或Edge浏览器</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="fas fa-tools text-warning me-2"></i>
+                                                故障排除
+                                            </h6>
+                                            <ul class="list-unstyled small">
+                                                <li>• 清除浏览器缓存</li>
+                                                <li>• 检查网络连接</li>
+                                                <li>• 尝试刷新页面</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="fas fa-envelope text-success me-2"></i>
+                                                联系支持
+                                            </h6>
+                                            <p class="card-text small">
+                                                如果问题持续存在，请联系技术支持或查看文档获取更多帮助。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 自动报告错误（仅在生产环境）
+{% if not config.DEBUG and error_code >= 500 %}
+document.addEventListener('DOMContentLoaded', function() {
+    // 这里可以添加错误报告逻辑
+    console.error('Server error occurred:', {
+        code: {{ error_code }},
+        message: '{{ error_message }}',
+        url: window.location.href,
+        timestamp: new Date().toISOString()
+    });
+});
+{% endif %}
+
+// 添加页面动画
+document.addEventListener('DOMContentLoaded', function() {
+    const errorContent = document.querySelector('.error-content');
+    errorContent.style.opacity = '0';
+    errorContent.style.transform = 'translateY(20px)';
+    
+    setTimeout(() => {
+        errorContent.style.transition = 'all 0.5s ease';
+        errorContent.style.opacity = '1';
+        errorContent.style.transform = 'translateY(0)';
+    }, 100);
+});
+</script>
+
+<style>
+.error-content {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.display-1 {
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.card {
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .display-1 {
+        font-size: 4rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .d-flex.gap-3 {
+        flex-direction: column;
+        gap: 0.5rem !important;
+    }
+}
+</style>
+{% endblock %}

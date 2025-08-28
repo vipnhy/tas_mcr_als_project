@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+
+{% block title %}历史会话 - TAS MCR-ALS 分析平台{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- 页面标题 -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-history me-2"></i>
+                历史分析会话
+            </h2>
+            <div>
+                <button class="btn btn-outline-danger" onclick="clearAllSessions()" 
+                        {% if not sessions %}disabled{% endif %}>
+                    <i class="fas fa-trash me-2"></i>清空历史
+                </button>
+                <a href="{{ url_for('upload_file') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>新建分析
+                </a>
+            </div>
+        </div>
+
+        <!-- 搜索和过滤 -->
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label for="searchInput" class="form-label">搜索会话</label>
+                        <input type="text" class="form-control" id="searchInput" 
+                               placeholder="输入文件名或会话ID..." onkeyup="filterSessions()">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="statusFilter" class="form-label">状态筛选</label>
+                        <select class="form-select" id="statusFilter" onchange="filterSessions()">
+                            <option value="">全部状态</option>
+                            <option value="completed">已完成</option>
+                            <option value="error">错误</option>
+                            <option value="running">运行中</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="dateFilter" class="form-label">日期筛选</label>
+                        <select class="form-select" id="dateFilter" onchange="filterSessions()">
+                            <option value="">全部时间</option>
+                            <option value="today">今天</option>
+                            <option value="week">最近一周</option>
+                            <option value="month">最近一月</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button class="btn btn-outline-secondary" onclick="resetFilters()">
+                                <i class="fas fa-redo me-1"></i>重置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 会话列表 -->
+        {% if sessions %}
+            <div id="sessionsList">
+                {% for session in sessions %}
+                <div class="card shadow mb-3 session-card" 
+                     data-session-id="{{ session.session_id }}"
+                     data-filename="{{ session.filename }}"
+                     data-status="{{ session.status }}"
+                     data-date="{{ session.created_time }}">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <!-- 会话信息 -->
+                            <div class="col-md-4">
+                                <h6 class="mb-1">
+                                    <i class="fas fa-file-alt me-2"></i>
+                                    {{ session.filename }}
+                                </h6>
+                                <p class="text-muted small mb-1">
+                                    会话ID: {{ session.session_id[:12] }}...
+                                </p>
+                                <p class="text-muted small mb-0">
+                                    创建时间: {{ session.created_time[:19] if session.created_time else '未知' }}
+                                </p>
+                            </div>
+
+                            <!-- 分析参数 -->
+                            <div class="col-md-3">
+                                {% if session.parameters %}
+                                <p class="mb-1 small">
+                                    <strong>组分数量:</strong> {{ session.parameters.n_components }}<br>
+                                    <strong>最大迭代:</strong> {{ session.parameters.max_iter }}<br>
+                                    <strong>语言:</strong> {{ session.parameters.language }}
+                                </p>
+                                {% else %}
+                                <p class="text-muted small">参数信息不可用</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- 状态 -->
+                            <div class="col-md-2 text-center">
+                                {% if session.status == 'completed' %}
+                                    <span class="badge bg-success fs-6">
+                                        <i class="fas fa-check me-1"></i>已完成
+                                    </span>
+                                    {% if session.completion_time %}
+                                    <p class="text-muted small mt-1 mb-0">
+                                        {{ session.completion_time[:19] }}
+                                    </p>
+                                    {% endif %}
+                                {% elif session.status == 'error' %}
+                                    <span class="badge bg-danger fs-6">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>错误
+                                    </span>
+                                {% elif session.status == 'running' %}
+                                    <span class="badge bg-primary fs-6">
+                                        <i class="fas fa-spinner fa-spin me-1"></i>运行中
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">未知</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- 操作按钮 -->
+                            <div class="col-md-3 text-end">
+                                {% if session.status == 'completed' %}
+                                    <a href="{{ url_for('view_results', session_id=session.session_id) }}" 
+                                       class="btn btn-sm btn-primary me-2">
+                                        <i class="fas fa-eye me-1"></i>查看结果
+                                    </a>
+                                    <a href="{{ url_for('download_all_results', session_id=session.session_id) }}" 
+                                       class="btn btn-sm btn-success me-2">
+                                        <i class="fas fa-download me-1"></i>下载
+                                    </a>
+                                {% elif session.status == 'running' %}
+                                    <a href="{{ url_for('analyze_progress', session_id=session.session_id) }}" 
+                                       class="btn btn-sm btn-info me-2">
+                                        <i class="fas fa-chart-line me-1"></i>查看进度
+                                    </a>
+                                {% elif session.status == 'error' %}
+                                    <button class="btn btn-sm btn-warning me-2" 
+                                            onclick="showErrorDetails('{{ session.session_id }}')">
+                                        <i class="fas fa-info-circle me-1"></i>错误详情
+                                    </button>
+                                {% endif %}
+                                
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                            data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="#" 
+                                               onclick="copySessionId('{{ session.session_id }}')">
+                                                <i class="fas fa-copy me-2"></i>复制会话ID
+                                            </a>
+                                        </li>
+                                        {% if session.status == 'completed' %}
+                                        <li>
+                                            <a class="dropdown-item" href="#" 
+                                               onclick="rerunAnalysis('{{ session.session_id }}')">
+                                                <i class="fas fa-redo me-2"></i>重新分析
+                                            </a>
+                                        </li>
+                                        {% endif %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item text-danger" href="#" 
+                                               onclick="deleteSession('{{ session.session_id }}')">
+                                                <i class="fas fa-trash me-2"></i>删除会话
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- 分页 -->
+            {% if sessions|length >= 10 %}
+            <nav aria-label="会话分页">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item disabled">
+                        <span class="page-link">上一页</span>
+                    </li>
+                    <li class="page-item active">
+                        <span class="page-link">1</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">下一页</span>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+
+        {% else %}
+            <!-- 空状态 -->
+            <div class="text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-history fa-4x text-muted"></i>
+                </div>
+                <h4 class="text-muted">暂无历史会话</h4>
+                <p class="text-muted">您还没有进行过任何分析，开始您的第一次TAS MCR-ALS分析吧！</p>
+                <a href="{{ url_for('upload_file') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-upload me-2"></i>开始分析
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 错误详情模态框 -->
+<div class="modal fade" id="errorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+                    错误详情
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="errorDetails">
+                    <div class="text-center">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        加载错误详情...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 确认删除模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-trash me-2 text-danger"></i>
+                    确认删除
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除这个分析会话吗？此操作不可恢复。</p>
+                <p class="text-muted">会话ID: <span id="deleteSessionId"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                    <i class="fas fa-trash me-1"></i>确认删除
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentDeleteSessionId = null;
+
+// 筛选会话
+function filterSessions() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const dateFilter = document.getElementById('dateFilter').value;
+    
+    const sessionCards = document.querySelectorAll('.session-card');
+    
+    sessionCards.forEach(card => {
+        let show = true;
+        
+        // 搜索筛选
+        if (searchTerm) {
+            const filename = card.dataset.filename.toLowerCase();
+            const sessionId = card.dataset.sessionId.toLowerCase();
+            if (!filename.includes(searchTerm) && !sessionId.includes(searchTerm)) {
+                show = false;
+            }
+        }
+        
+        // 状态筛选
+        if (statusFilter && card.dataset.status !== statusFilter) {
+            show = false;
+        }
+        
+        // 日期筛选
+        if (dateFilter) {
+            const cardDate = new Date(card.dataset.date);
+            const now = new Date();
+            
+            switch (dateFilter) {
+                case 'today':
+                    if (cardDate.toDateString() !== now.toDateString()) {
+                        show = false;
+                    }
+                    break;
+                case 'week':
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    if (cardDate < weekAgo) {
+                        show = false;
+                    }
+                    break;
+                case 'month':
+                    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    if (cardDate < monthAgo) {
+                        show = false;
+                    }
+                    break;
+            }
+        }
+        
+        card.style.display = show ? 'block' : 'none';
+    });
+}
+
+// 重置筛选
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('dateFilter').value = '';
+    filterSessions();
+}
+
+// 复制会话ID
+function copySessionId(sessionId) {
+    navigator.clipboard.writeText(sessionId).then(() => {
+        showToast('会话ID已复制到剪贴板', 'success');
+    }).catch(err => {
+        console.error('复制失败:', err);
+        showToast('复制失败', 'error');
+    });
+}
+
+// 显示错误详情
+function showErrorDetails(sessionId) {
+    const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+    modal.show();
+    
+    // 加载错误详情
+    fetch(`/api/get_progress/${sessionId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.session_info && data.session_info.error_message) {
+            document.getElementById('errorDetails').innerHTML = `
+                <div class="alert alert-danger">
+                    <h6>错误信息:</h6>
+                    <pre class="mb-0">${data.session_info.error_message}</pre>
+                </div>
+                <div class="mt-3">
+                    <h6>会话信息:</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>文件名:</strong> ${data.session_info.filename}</li>
+                        <li><strong>会话ID:</strong> ${data.session_info.session_id}</li>
+                        <li><strong>创建时间:</strong> ${data.session_info.created_time}</li>
+                    </ul>
+                </div>
+            `;
+        } else {
+            document.getElementById('errorDetails').innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    无法获取详细错误信息
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('获取错误详情失败:', error);
+        document.getElementById('errorDetails').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                获取错误详情时发生错误
+            </div>
+        `;
+    });
+}
+
+// 删除会话
+function deleteSession(sessionId) {
+    currentDeleteSessionId = sessionId;
+    document.getElementById('deleteSessionId').textContent = sessionId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// 确认删除
+function confirmDelete() {
+    if (!currentDeleteSessionId) return;
+    
+    fetch(`/api/delete_session/${currentDeleteSessionId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('会话已删除', 'success');
+            // 移除对应的卡片
+            const card = document.querySelector(`[data-session-id="${currentDeleteSessionId}"]`);
+            if (card) {
+                card.remove();
+            }
+            // 检查是否还有会话，如果没有则显示空状态
+            const remainingCards = document.querySelectorAll('.session-card');
+            if (remainingCards.length === 0) {
+                location.reload();
+            }
+        } else {
+            showToast(data.message || '删除失败', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('删除会话失败:', error);
+        showToast('删除会话时发生错误', 'error');
+    })
+    .finally(() => {
+        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+        currentDeleteSessionId = null;
+    });
+}
+
+// 清空所有会话
+function clearAllSessions() {
+    if (confirm('您确定要删除所有历史会话吗？此操作不可恢复。')) {
+        fetch('/api/clear_all_sessions', {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('所有历史会话已清空', 'success');
+                location.reload();
+            } else {
+                showToast(data.message || '清空失败', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('清空会话失败:', error);
+            showToast('清空会话时发生错误', 'error');
+        });
+    }
+}
+
+// 重新分析
+function rerunAnalysis(sessionId) {
+    if (confirm('确定要使用相同的参数重新分析这个数据吗？')) {
+        // 重定向到分析页面
+        window.location.href = `/rerun_analysis/${sessionId}`;
+    }
+}
+
+// Toast 提示
+function showToast(message, type = 'info') {
+    // 创建 toast 元素
+    const toastHtml = `
+        <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" 
+             role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" 
+                        data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    // 添加到页面
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // 显示 toast
+    const toastElement = toastContainer.lastElementChild;
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // 自动移除
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+</script>
+
+<style>
+.session-card {
+    transition: all 0.3s ease;
+}
+
+.session-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.dropdown-menu {
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+</style>
+{% endblock %}

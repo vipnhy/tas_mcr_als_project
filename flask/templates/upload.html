@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}上传数据 - TAS MCR-ALS 分析平台{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    上传TAS数据文件
+                </h4>
+            </div>
+            
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    <!-- 文件上传区域 -->
+                    <div class="mb-4">
+                        <label for="file" class="form-label">
+                            <strong>选择数据文件</strong>
+                            <span class="text-muted">(支持 CSV, TXT, DAT 格式，最大 50MB)</span>
+                        </label>
+                        <div class="drop-zone" id="dropZone">
+                            <div class="drop-zone-content">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <p class="mb-2">拖拽文件到此处或点击选择文件</p>
+                                <input type="file" name="file" id="file" class="form-control" accept=".csv,.txt,.dat" required>
+                            </div>
+                        </div>
+                        <div id="fileInfo" class="mt-2" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="fas fa-file me-2"></i>
+                                <span id="fileName"></span>
+                                <span class="float-end">
+                                    <span id="fileSize"></span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger ms-2" id="removeFile">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 文件格式设置 -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="file_type" class="form-label">文件类型</label>
+                            <select name="file_type" id="file_type" class="form-select">
+                                <option value="handle">已处理数据 (Handle)</option>
+                                <option value="raw">原始数据 (Raw)</option>
+                            </select>
+                            <div class="form-text">
+                                Handle: 经过预处理的数据；Raw: 原始实验数据
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="language" class="form-label">界面语言</label>
+                            <select name="language" id="language" class="form-select">
+                                <option value="chinese">中文</option>
+                                <option value="english">English</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 数据范围设置 -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">数据范围设置</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">波长范围 (nm)</label>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <input type="number" name="wavelength_min" class="form-control" 
+                                                   value="400" step="0.1" placeholder="最小值">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="number" name="wavelength_max" class="form-control" 
+                                                   value="800" step="0.1" placeholder="最大值">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">时间延迟范围 (ps)</label>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <input type="number" name="delay_min" class="form-control" 
+                                                   value="0" step="0.001" placeholder="最小值">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="number" name="delay_max" class="form-control" 
+                                                   value="10" step="0.001" placeholder="最大值">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MCR-ALS参数设置 -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">MCR-ALS 分析参数</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="n_components" class="form-label">组分数量</label>
+                                    <input type="number" name="n_components" id="n_components" 
+                                           class="form-control" value="3" min="2" max="10">
+                                    <div class="form-text">建议从2-4开始尝试</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="max_iter" class="form-label">最大迭代次数</label>
+                                    <input type="number" name="max_iter" id="max_iter" 
+                                           class="form-control" value="200" min="10" max="1000">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">收敛容差</label>
+                                    <input type="text" class="form-control" value="1e-7" readonly>
+                                    <div class="form-text">固定值，确保分析精度</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 提交按钮 -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-arrow-left me-2"></i>返回
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-upload me-2"></i>上传并开始分析
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 预设参数模板 -->
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-magic me-2"></i>
+                    常用参数预设
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">标准TAS</h6>
+                                <p class="card-text small">
+                                    波长: 420-750nm<br>
+                                    延迟: 0.1-50ps<br>
+                                    组分: 3个
+                                </p>
+                                <button type="button" class="btn btn-sm btn-outline-primary preset-btn"
+                                        data-wavelength-min="420" data-wavelength-max="750"
+                                        data-delay-min="0.1" data-delay-max="50"
+                                        data-components="3">
+                                    应用
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">宽波长范围</h6>
+                                <p class="card-text small">
+                                    波长: 400-800nm<br>
+                                    延迟: 0-100ps<br>
+                                    组分: 4个
+                                </p>
+                                <button type="button" class="btn btn-sm btn-outline-success preset-btn"
+                                        data-wavelength-min="400" data-wavelength-max="800"
+                                        data-delay-min="0" data-delay-max="100"
+                                        data-components="4">
+                                    应用
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h6 class="card-title">快速分析</h6>
+                                <p class="card-text small">
+                                    波长: 450-700nm<br>
+                                    延迟: 1-10ps<br>
+                                    组分: 2个
+                                </p>
+                                <button type="button" class="btn btn-sm btn-outline-warning preset-btn"
+                                        data-wavelength-min="450" data-wavelength-max="700"
+                                        data-delay-min="1" data-delay-max="10"
+                                        data-components="2">
+                                    应用
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 文件拖拽上传
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('file');
+const fileInfo = document.getElementById('fileInfo');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+const removeFile = document.getElementById('removeFile');
+
+// 拖拽事件
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('dragover');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        fileInput.files = files;
+        showFileInfo(files[0]);
+    }
+});
+
+// 点击选择文件
+dropZone.addEventListener('click', () => {
+    fileInput.click();
+});
+
+// 文件选择事件
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        showFileInfo(e.target.files[0]);
+    }
+});
+
+// 显示文件信息
+function showFileInfo(file) {
+    fileName.textContent = file.name;
+    fileSize.textContent = formatFileSize(file.size);
+    fileInfo.style.display = 'block';
+    dropZone.style.display = 'none';
+}
+
+// 移除文件
+removeFile.addEventListener('click', () => {
+    fileInput.value = '';
+    fileInfo.style.display = 'none';
+    dropZone.style.display = 'block';
+});
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 预设参数应用
+document.addEventListener('DOMContentLoaded', function() {
+    const presetButtons = document.querySelectorAll('.preset-btn');
+    
+    presetButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelector('input[name="wavelength_min"]').value = this.dataset.wavelengthMin;
+            document.querySelector('input[name="wavelength_max"]').value = this.dataset.wavelengthMax;
+            document.querySelector('input[name="delay_min"]').value = this.dataset.delayMin;
+            document.querySelector('input[name="delay_max"]').value = this.dataset.delayMax;
+            document.querySelector('input[name="n_components"]').value = this.dataset.components;
+            
+            // 添加视觉反馈
+            this.innerHTML = '<i class="fas fa-check me-1"></i>已应用';
+            this.disabled = true;
+            setTimeout(() => {
+                this.innerHTML = '应用';
+                this.disabled = false;
+            }, 2000);
+        });
+    });
+});
+
+// 表单提交验证
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (!fileInput.files.length) {
+        e.preventDefault();
+        alert('请选择文件！');
+        return;
+    }
+    
+    // 更改按钮状态
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>上传中...';
+    submitBtn.disabled = true;
+});
+</script>
+
+<style>
+.drop-zone {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.drop-zone:hover {
+    border-color: #007bff;
+    background-color: #e7f3ff;
+}
+
+.drop-zone.dragover {
+    border-color: #007bff;
+    background-color: #e7f3ff;
+    transform: scale(1.02);
+}
+
+.drop-zone input[type="file"] {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.drop-zone-content {
+    position: relative;
+    pointer-events: none;
+}
+</style>
+{% endblock %}

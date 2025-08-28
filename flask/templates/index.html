@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}主页 - TAS MCR-ALS 分析平台{% endblock %}
+
+{% block extra_css %}
+<style>
+/* 主页专用样式 */
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="rgba(255,255,255,0.1)"><polygon points="1000,100 1000,0 0,100"/></svg>');
+    background-size: cover;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+}
+
+.feature-card-enhanced {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 2px solid transparent;
+    border-radius: 15px;
+    transition: all 0.4s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.feature-card-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.6s ease;
+}
+
+.feature-card-enhanced:hover::before {
+    left: 100%;
+}
+
+.feature-card-enhanced:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+    border-color: #007bff;
+}
+
+.section-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #007bff, transparent);
+    margin: 3rem 0;
+}
+
+.step-flow-card {
+    background: linear-gradient(135deg, #fff3cd 0%, #fff8e1 100%);
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+
+.cta-section {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,123,255,0.3);
+}
+
+.text-enhanced {
+    color: #2c3e50 !important;
+    font-weight: 600;
+}
+
+.description-text {
+    color: #495057 !important;
+    font-size: 0.95rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 欢迎区域 -->
+<div class="row">
+    <div class="col-12">
+        <div class="hero-section p-5 rounded-3 text-white">
+            <div class="hero-content container-fluid">
+                <h1 class="display-4">
+                    <i class="fas fa-microscope me-3"></i>
+                    TAS MCR-ALS 分析平台
+                </h1>
+                <p class="lead">
+                    先进的瞬态吸收光谱(TAS)多元曲线分辨-交替最小二乘法(MCR-ALS)在线分析工具
+                </p>
+                <hr class="my-4" style="border-color: rgba(255,255,255,0.3);">
+                <p>
+                    上传您的TAS数据文件，设置分析参数，即可获得专业的MCR-ALS分析结果，包括浓度轮廓、纯光谱和详细的拟合报告。
+                </p>
+                <a class="btn btn-light btn-lg" href="{{ url_for('upload_file') }}" role="button">
+                    <i class="fas fa-upload me-2"></i>开始分析
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- 功能特性 -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="text-center mb-5 text-enhanced">✨ 平台特性</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card feature-card-enhanced h-100 border-0">
+            <div class="card-body text-center p-4">
+                <div class="feature-icon mb-3">
+                    <i class="fas fa-upload fa-3x text-primary"></i>
+                </div>
+                <h5 class="card-title text-enhanced">📤 简单上传</h5>
+                <p class="card-text description-text">
+                    支持CSV, TXT, DAT格式的TAS数据文件，拖拽上传，操作简便。
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card feature-card-enhanced h-100 border-0">
+            <div class="card-body text-center p-4">
+                <div class="feature-icon mb-3">
+                    <i class="fas fa-cogs fa-3x text-success"></i>
+                </div>
+                <h5 class="card-title text-enhanced">⚙️ 灵活配置</h5>
+                <p class="card-text description-text">
+                    可调整波长范围、时间延迟范围、组分数量等参数，满足不同分析需求。
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card feature-card-enhanced h-100 border-0">
+            <div class="card-body text-center p-4">
+                <div class="feature-icon mb-3">
+                    <i class="fas fa-chart-area fa-3x text-info"></i>
+                </div>
+                <h5 class="card-title text-enhanced">📊 可视化结果</h5>
+                <p class="card-text description-text">
+                    自动生成浓度轮廓图、纯光谱图、LOF收敛曲线等专业图表。
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card feature-card-enhanced h-100 border-0">
+            <div class="card-body text-center p-4">
+                <div class="feature-icon mb-3">
+                    <i class="fas fa-download fa-3x text-warning"></i>
+                </div>
+                <h5 class="card-title text-enhanced">💾 结果下载</h5>
+                <p class="card-text description-text">
+                    支持下载分析图表、数值结果和分析参数，便于后续研究使用。
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card feature-card-enhanced h-100 border-0">
+            <div class="card-body text-center p-4">
+                <div class="feature-icon mb-3">
+                    <i class="fas fa-history fa-3x text-secondary"></i>
+                </div>
+                <h5 class="card-title text-enhanced">📚 历史管理</h5>
+                <p class="card-text description-text">
+                    保存分析历史，支持重复查看和下载之前的分析结果。
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card feature-card-enhanced h-100 border-0">
+            <div class="card-body text-center p-4">
+                <div class="feature-icon mb-3">
+                    <i class="fas fa-language fa-3x text-danger"></i>
+                </div>
+                <h5 class="card-title text-enhanced">🌐 多语言支持</h5>
+                <p class="card-text description-text">
+                    支持中文和英文界面，图表标签自动适配所选语言。
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- 使用流程 -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="text-center mb-5 text-enhanced">🚀 使用流程</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card step-flow-card border-0">
+            <div class="card-body p-5">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-4">
+                        <div class="step-icon mb-3">
+                            <span class="badge bg-primary rounded-pill fs-3 px-3 py-2">1</span>
+                        </div>
+                        <h6 class="text-enhanced">📁 上传数据</h6>
+                        <p class="small description-text">上传TAS数据文件并设置基本参数</p>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="step-icon mb-3">
+                            <span class="badge bg-success rounded-pill fs-3 px-3 py-2">2</span>
+                        </div>
+                        <h6 class="text-enhanced">⚙️ 配置分析</h6>
+                        <p class="small description-text">设置MCR-ALS分析参数</p>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="step-icon mb-3">
+                            <span class="badge bg-info rounded-pill fs-3 px-3 py-2">3</span>
+                        </div>
+                        <h6 class="text-enhanced">🔬 运行分析</h6>
+                        <p class="small description-text">系统自动执行MCR-ALS算法</p>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="step-icon mb-3">
+                            <span class="badge bg-warning rounded-pill fs-3 px-3 py-2">4</span>
+                        </div>
+                        <h6 class="text-enhanced">📊 查看结果</h6>
+                        <p class="small description-text">下载图表和数据结果</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 快速开始 -->
+<div class="row mt-5 mb-4">
+    <div class="col-12">
+        <div class="card cta-section text-white border-0">
+            <div class="card-body text-center p-5">
+                <h3 class="text-white mb-3">🎯 准备开始分析？</h3>
+                <p class="lead text-white mb-4">准备好您的TAS数据文件，点击下方按钮开始分析之旅！</p>
+                <a href="{{ url_for('upload_file') }}" class="btn btn-light btn-lg me-3 px-4 py-2">
+                    <i class="fas fa-upload me-2"></i>上传数据
+                </a>
+                <a href="{{ url_for('list_sessions') }}" class="btn btn-outline-light btn-lg px-4 py-2">
+                    <i class="fas fa-history me-2"></i>查看历史
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
