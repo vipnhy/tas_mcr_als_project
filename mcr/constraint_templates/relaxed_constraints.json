@@ -1,0 +1,47 @@
+{
+  "constraints": {
+    "non_negativity": {
+      "name": "浓度非负性约束",
+      "description": "确保浓度矩阵C和光谱矩阵S中所有元素≥0",
+      "type": "non_negativity",
+      "enabled": true,
+      "apply_to": [
+        "C",
+        "S"
+      ],
+      "parameters": {}
+    },
+    "spectral_smoothness": {
+      "name": "光谱平滑度约束",
+      "description": "使用二阶导数惩罚项确保光谱平滑",
+      "type": "spectral_smoothness",
+      "enabled": false,
+      "apply_to": [
+        "S"
+      ],
+      "parameters": {
+        "lambda": 0.001,
+        "order": 2
+      }
+    },
+    "component_count_range": {
+      "name": "组分数量范围",
+      "description": "限制组分数量在合理范围内",
+      "type": "component_count_range",
+      "enabled": false,
+      "apply_to": [
+        "validation"
+      ],
+      "parameters": {
+        "min_components": 1,
+        "max_components": 6,
+        "default_components": 3
+      }
+    }
+  },
+  "active_constraints": [
+    "non_negativity"
+  ],
+  "version": "1.0",
+  "description": "MCR-ALS 约束配置模板"
+}

@@ -32,22 +32,50 @@ def generate_synthetic_tas_data(n_times=100, n_wls=200, n_components=2):
     
     # Concentration profiles (C) - e.g., A -> B -> C kinetics
     C = np.zeros((n_times, n_components))
-    C[:, 0] = np.exp(-0.5 * t)  # Species 1 decays
-    C[:, 1] = (np.exp(-0.1 * t) - np.exp(-0.5 * t)) # Species 2 grows and decays
     
-    # Normalize concentrations for clarity
+    if n_components >= 1:
+        C[:, 0] = np.exp(-0.5 * t)  # Species 1 decays
+    if n_components >= 2:
+        C[:, 1] = (np.exp(-0.1 * t) - np.exp(-0.5 * t))  # Species 2 grows and decays
+    if n_components >= 3:
+        C[:, 2] = 1.0 - np.exp(-0.2 * t)  # Species 3 grows slowly
+    if n_components >= 4:
+        C[:, 3] = np.exp(-1.0 * t) * np.sin(t * 2)  # Species 4 oscillating decay
+    
+    # Handle additional components beyond 4
+    for i in range(4, n_components):
+        # Generate varied kinetic profiles
+        rate = 0.3 + 0.2 * i
+        C[:, i] = np.exp(-rate * t) * (1 + 0.5 * np.sin(t * (i + 1)))
+    
+    # Normalize concentrations for clarity (avoid divide by zero)
     for i in range(n_components):
-        C[:, i] /= np.max(C[:, i])
+        max_val = np.max(np.abs(C[:, i]))
+        if max_val > 0:
+            C[:, i] /= max_val
+        else:
+            C[:, i] = np.ones(n_times) * 0.1  # Small positive values
 
     # Spectra (S.T) - e.g., Gaussian peaks
     wls = np.linspace(400, 800, n_wls)
     S = np.zeros((n_wls, n_components))
-    S[:, 0] = np.exp(-((wls - 500)**2) / (2 * 30**2))  # Peak at 500 nm
-    S[:, 1] = np.exp(-((wls - 650)**2) / (2 * 40**2))  # Peak at 650 nm
     
-    # Normalize spectra
+    # Generate different spectral shapes for each component
+    peak_centers = np.linspace(450, 750, n_components)
+    peak_widths = np.linspace(25, 40, n_components)
+    
     for i in range(n_components):
-        S[:, i] /= np.max(S[:, i])
+        center = peak_centers[i]
+        width = peak_widths[i]
+        S[:, i] = np.exp(-((wls - center)**2) / (2 * width**2))
+    
+    # Normalize spectra (avoid divide by zero)
+    for i in range(n_components):
+        max_val = np.max(np.abs(S[:, i]))
+        if max_val > 0:
+            S[:, i] /= max_val
+        else:
+            S[:, i] = np.ones(n_wls) * 0.1  # Small positive values
 
     # Create the data matrix D
     D_clean = C @ S.T
