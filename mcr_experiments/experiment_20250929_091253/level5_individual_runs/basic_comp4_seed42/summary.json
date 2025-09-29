@@ -1,0 +1,11 @@
+{
+  "experiment_id": "basic_comp4_seed42",
+  "n_components": 4,
+  "constraint_type": "basic",
+  "constraint_strength": 0.0,
+  "random_seed": 42,
+  "iterations_to_converge": 200,
+  "final_lof": 15.638911515828754,
+  "converged": false,
+  "computation_time": 0.05145764350891113
+}
