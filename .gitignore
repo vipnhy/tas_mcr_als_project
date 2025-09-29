@@ -92,6 +92,12 @@ Thumbs.db
 # results/
 # output/
 
+# Experiment outputs
+demo_experiments/
+problem_statement_experiment/
+test_experiments/
+mcr_experiments/
+
 # Log files
 *.log
 

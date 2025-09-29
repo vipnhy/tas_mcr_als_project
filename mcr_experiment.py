@@ -8,6 +8,7 @@ MCR-ALS实验框架
 import os
 import json
 import time
+import shutil
 from datetime import datetime
 from pathlib import Path
 import numpy as np
@@ -50,7 +51,10 @@ class ExperimentResult:
 class MCRExperimentRunner:
     """MCR-ALS实验运行器"""
     
-    def __init__(self, output_base_dir: str = "mcr_experiments"):
+    def __init__(self,
+                 output_base_dir: str = "mcr_experiments",
+                 smoothness_strengths: Optional[List[float]] = None,
+                 base_random_seed: Optional[int] = None):
         """
         初始化实验运行器
         
@@ -60,6 +64,18 @@ class MCRExperimentRunner:
         self.output_base_dir = Path(output_base_dir)
         self.experiment_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.current_experiment_dir = self.output_base_dir / f"experiment_{self.experiment_timestamp}"
+        self.smoothness_strengths = sorted(smoothness_strengths) if smoothness_strengths else [0.1, 0.2, 0.5, 1.0]
+        if base_random_seed == "time":
+            self.random_seed_strategy = "time"
+            self.base_random_seed = int(time.time())
+        elif base_random_seed is None:
+            self.random_seed_strategy = "fixed_default"
+            self.base_random_seed = 12345
+        else:
+            self.random_seed_strategy = "fixed_custom"
+            self.base_random_seed = int(base_random_seed)
+        self._master_rng = np.random.default_rng(self.base_random_seed)
+        self.constraint_strength_map: Dict[str, float] = {}
         
         # 实验结果存储
         self.results: List[ExperimentResult] = []
@@ -86,27 +102,43 @@ class MCRExperimentRunner:
         
         print(f"创建实验目录结构: {self.current_experiment_dir}")
     
+    def _record_experiment_configuration(self, configuration: Dict[str, Any]):
+        """保存本次实验的总体配置"""
+        config_path_root = self.current_experiment_dir / "experiment_config.json"
+        config_path_level1 = self.current_experiment_dir / "level1_summary" / "experiment_config.json"
+        for path in [config_path_root, config_path_level1]:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(configuration, f, ensure_ascii=False, indent=2)
+
+    def _next_random_seed(self) -> int:
+        """生成一个新的随机种子（保证可重复）"""
+        return int(self._master_rng.integers(0, np.iinfo(np.uint32).max))
+
     def _create_constraint_configurations(self) -> Dict[str, ConstraintConfig]:
         """创建不同强度的约束配置"""
         configurations = {}
+        self.constraint_strength_map = {}
         
         # 1. 基本配置（仅非负性约束）
         basic_config = ConstraintConfig()
         configurations["basic"] = basic_config
+        self.constraint_strength_map["basic"] = 0.0
         
         # 2. 不同强度的平滑度约束
-        smoothness_strengths = [0.1, 0.2, 0.5, 1.0]
-        for strength in smoothness_strengths:
+        for strength in self.smoothness_strengths:
             config = ConstraintConfig()
             config.enable_constraint("spectral_smoothness")
             config.set_constraint_parameter("spectral_smoothness", "lambda", strength)
-            configurations[f"smoothness_{strength}"] = config
+            constraint_key = f"smoothness_{strength}"
+            configurations[constraint_key] = config
+            self.constraint_strength_map[constraint_key] = float(strength)
         
         # 3. 组合约束配置
         combined_config = ConstraintConfig()
         combined_config.enable_constraint("spectral_smoothness")
         combined_config.set_constraint_parameter("spectral_smoothness", "lambda", 0.5)
         configurations["combined"] = combined_config
+        self.constraint_strength_map["combined"] = 0.5
         
         return configurations
     
@@ -205,6 +237,20 @@ class MCRExperimentRunner:
         
         # 获取约束配置
         constraint_configs = self._create_constraint_configurations()
+        self._record_experiment_configuration({
+            "experiment_timestamp": self.experiment_timestamp,
+            "output_directory": str(self.current_experiment_dir),
+            "n_components_range": list(n_components_range),
+            "num_random_runs": num_random_runs,
+            "max_iter": max_iter,
+            "tolerance": tolerance,
+            "target_lof": target_lof,
+            "smoothness_strengths": self.smoothness_strengths,
+            "constraint_names": list(constraint_configs.keys()),
+            "constraint_strength_map": self.constraint_strength_map,
+            "base_random_seed": self.base_random_seed,
+            "random_seed_strategy": self.random_seed_strategy
+        })
         
         total_experiments = len(n_components_range) * len(constraint_configs) * num_random_runs
         experiment_count = 0
@@ -217,15 +263,12 @@ class MCRExperimentRunner:
                 print(f"  约束类型: {constraint_name}")
                 
                 # 获取约束强度（用于记录）
-                if "smoothness" in constraint_name and constraint_name != "combined":
-                    strength = float(constraint_name.split('_')[1])
-                else:
-                    strength = 0.0
+                strength = float(self.constraint_strength_map.get(constraint_name, 0.0))
                 
                 # 运行多次随机初始化
                 for run_idx in range(num_random_runs):
                     experiment_count += 1
-                    random_seed = run_idx + 42  # 确定性种子
+                    random_seed = self._next_random_seed()
                     
                     print(f"    运行 {run_idx+1}/{num_random_runs} (种子: {random_seed}) "
                           f"[{experiment_count}/{total_experiments}]")
@@ -297,8 +340,11 @@ class MCRExperimentRunner:
         
         # === 1. 一级汇总报告（保存在顶级目录） ===
         summary_report = self._create_level1_summary(df, target_lof)
-        with open(self.current_experiment_dir / "level1_summary" / "experiment_summary.json", 'w', encoding='utf-8') as f:
+        level1_summary_path = self.current_experiment_dir / "level1_summary" / "experiment_summary.json"
+        with open(level1_summary_path, 'w', encoding='utf-8') as f:
             json.dump(summary_report, f, indent=2, ensure_ascii=False)
+        # 将一级汇总复制到实验根目录，方便快速查看
+        shutil.copyfile(level1_summary_path, self.current_experiment_dir / "experiment_summary.json")
         
         # === 2. 约束分析报告 ===
         constraint_analysis = self._analyze_constraints(df, target_lof)
@@ -317,6 +363,8 @@ class MCRExperimentRunner:
         
         # === 5. 生成Excel汇总 ===
         self._save_excel_summary(df)
+        # === 6. 输出辅助CSV数据 ===
+        self._export_flat_results(df, target_lof)
         
         print("汇总分析报告生成完成")
     
@@ -531,6 +579,76 @@ class MCRExperimentRunner:
         except ImportError:
             print("警告: 无法导入openpyxl，跳过Excel文件生成")
     
+    def _export_flat_results(self, df: pd.DataFrame, target_lof: float):
+        """输出便于快速查看的CSV结果"""
+        level1_dir = self.current_experiment_dir / "level1_summary"
+        level2_dir = self.current_experiment_dir / "level2_constraint_analysis"
+        level3_dir = self.current_experiment_dir / "level3_component_scaling"
+        data_dir = self.current_experiment_dir / "data"
+
+        essential_columns = [
+            "experiment_id",
+            "constraint_type",
+            "constraint_strength",
+            "n_components",
+            "random_seed",
+            "final_lof",
+            "converged",
+            "iterations_to_converge",
+            "computation_time"
+        ]
+
+        # 全部运行结果（同时复制到 data 目录）
+        df[essential_columns].to_csv(level1_dir / "all_results.csv", index=False)
+        df[essential_columns].to_csv(data_dir / "lof_records.csv", index=False)
+
+        # 按约束类型汇总LOF表现
+        constraint_records = []
+        for (constraint_type, strength), group in df.groupby(["constraint_type", "constraint_strength"]):
+            total_runs = len(group)
+            constraint_records.append({
+                "constraint_type": constraint_type,
+                "constraint_strength": float(strength),
+                "total_runs": int(total_runs),
+                "success_rate": float(group['converged'].mean() * 100),
+                "target_achievement_rate": float((group['final_lof'] < target_lof).mean() * 100),
+                "mean_lof": float(group['final_lof'].mean()),
+                "median_lof": float(group['final_lof'].median()),
+                "std_lof": float(group['final_lof'].std(ddof=0) if total_runs > 1 else 0.0),
+                "best_lof": float(group['final_lof'].min()),
+                "worst_lof": float(group['final_lof'].max()),
+            })
+        constraint_summary_df = pd.DataFrame(constraint_records)
+        if not constraint_summary_df.empty:
+            constraint_summary_df = constraint_summary_df.sort_values(
+                ["constraint_strength", "constraint_type"], ignore_index=True
+            )
+        constraint_summary_df.to_csv(level2_dir / "constraint_lof_summary.csv", index=False)
+
+        # 按组分数量汇总
+        component_records = []
+        for n_components, group in df.groupby("n_components"):
+            total_runs = len(group)
+            component_records.append({
+                "n_components": int(n_components),
+                "total_runs": int(total_runs),
+                "success_rate": float(group['converged'].mean() * 100),
+                "target_achievement_rate": float((group['final_lof'] < target_lof).mean() * 100),
+                "mean_lof": float(group['final_lof'].mean()),
+                "median_lof": float(group['final_lof'].median()),
+                "std_lof": float(group['final_lof'].std(ddof=0) if total_runs > 1 else 0.0),
+                "best_lof": float(group['final_lof'].min()),
+                "worst_lof": float(group['final_lof'].max()),
+                "mean_iterations": float(group[group['converged'] == True]['iterations_to_converge'].mean())
+                    if any(group['converged']) else None,
+            })
+        component_summary_df = pd.DataFrame(component_records)
+        if not component_summary_df.empty:
+            component_summary_df = component_summary_df.sort_values(
+                "n_components", ignore_index=True
+            )
+        component_summary_df.to_csv(level3_dir / "component_lof_summary.csv", index=False)
+
     def _generate_visualizations(self):
         """生成可视化图表"""
         print("生成可视化图表...")
@@ -664,8 +782,8 @@ class MCRExperimentRunner:
         axes[0].set_xscale('log')
         
         # 目标达成率 vs 平滑度强度
-        target_rate = smoothness_df.groupby('constraint_strength').apply(
-            lambda x: (x['final_lof'] < 0.2).mean() * 100
+        target_rate = smoothness_df.groupby('constraint_strength')['final_lof'].apply(
+            lambda x: (x < 0.2).mean() * 100
         )
         axes[1].plot(target_rate.index, target_rate.values, 'o-', linewidth=2, markersize=8)
         axes[1].set_xlabel('Smoothness Parameter (lambda)')

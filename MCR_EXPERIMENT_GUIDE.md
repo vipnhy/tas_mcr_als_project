@@ -5,29 +5,36 @@
 本实验框架是为MCR-ALS算法设计的综合性实验系统，支持多轮分析、约束测试和参数扩展性评估。框架按照要求实现了以下核心功能：
 
 ### ✅ 核心特性
-- **多轮MCR-ALS分析**：支持初始值随机化5次（可配置）
-- **约束LOF值记录**：追踪不同约束下的LOF值，目标LOF<0.2%
+- **多轮MCR-ALS分析**：支持初始值随机化5次（可配置），引入可复现/时间随机两种种子策略
+- **约束LOF值记录**：追踪不同约束下的LOF值，并将关键统计导出为CSV/JSON，目标LOF < 0.2%
 - **参数扩展性测试**：
-  - 组分数量扩展测试（1→4组分，可配置）
-  - 约束强度梯度测试（惩罚因子0.1-1.0，可配置）
-- **分级目录结构**：自动创建分级目录，汇总结果保存在顶级目录
-- **全面分析报告**：生成JSON、Excel格式的详细分析报告
-- **可视化图表**：自动生成性能对比、扩展性分析等图表
+  - 组分数量扩展测试（默认1→4组分，可配置）
+  - 平滑度约束强度梯度测试（惩罚因子默认0.1→1.0，可通过构造函数自定义）
+- **分级目录结构**：自动创建多层级目录，并在实验根目录同步保存核心汇总与配置文件
+- **全面分析报告**：生成JSON、CSV、Excel（可选）等多格式分析结果，便于二次处理
+- **可视化图表**：自动生成性能对比、扩展性分析、参数敏感性与收敛性图表
 
 ## 目录结构
 
+
+> 💡 想要调整平滑度强度测试范围？在创建 `MCRExperimentRunner` 时传入 `smoothness_strengths=[...]` 即可，框架会自动生成新的 `smoothness_X` 配置，并在汇总文件中同步记录。
 实验框架会自动创建如下分级目录结构：
 
 ```
 mcr_experiments/
 └── experiment_YYYYMMDD_HHMMSS/
-    ├── level1_summary/                 # 一级汇总（顶级目录）
-    │   ├── experiment_summary.json     # 主要汇总报告
-    │   └── experiment_results.xlsx     # Excel格式结果
-    ├── level2_constraint_analysis/     # 约束分析
-    │   └── constraint_analysis.json
-    ├── level3_component_scaling/       # 组分扩展性分析
-    │   └── component_scaling.json
+  ├── experiment_summary.json         # 顶级目录中的核心汇总拷贝
+  ├── experiment_config.json          # 本次实验的运行配置
+  ├── level1_summary/                 # 一级汇总（分析汇总入口）
+  │   ├── experiment_summary.json     # 主要汇总报告（原始文件）
+  │   ├── experiment_results.xlsx     # Excel格式结果（需要openpyxl，可选安装）
+  │   └── all_results.csv             # 全部运行记录（平铺数据）
+  ├── level2_constraint_analysis/     # 约束分析
+  │   ├── constraint_analysis.json
+  │   └── constraint_lof_summary.csv  # 各约束LOF表现汇总
+  ├── level3_component_scaling/       # 组分扩展性分析
+  │   ├── component_scaling.json
+  │   └── component_lof_summary.csv   # 组分数量表现汇总
     ├── level4_parameter_tuning/        # 参数调优分析
     │   └── parameter_tuning.json
     ├── level5_individual_runs/         # 单次实验详细结果
@@ -42,7 +49,8 @@ mcr_experiments/
     │   ├── component_scaling.png
     │   ├── parameter_tuning.png
     │   └── convergence_analysis.png
-    └── data/                           # 实验数据（预留）
+  └── data/                           # 平铺实验数据
+  └── lof_records.csv             # 各约束运行的LOF详表
 ```
 
 ## 快速开始
@@ -56,6 +64,16 @@ from mcr_experiment import run_example_experiment
 runner = run_example_experiment()
 ```
 
+### 命令行快速实验
+
+想直接验证默认流程，可按以下步骤操作：
+
+1. 安装依赖：`pip install -r requirements.txt`
+2. （可选）若需Excel汇总：`pip install openpyxl`
+3. 进入项目根目录后执行：`python mcr_experiment.py`
+
+脚本会调用 `run_example_experiment()`，自动生成合成数据并运行完整多轮实验，输出结果位于 `mcr_experiments/experiment_时间戳/`。
+
 ### 自定义实验
 
 ```python
@@ -67,8 +85,12 @@ data_matrix, C_true, S_true = generate_synthetic_tas_data(
     n_times=100, n_wls=200, n_components=3
 )
 
-# 创建实验运行器
-runner = MCRExperimentRunner(output_base_dir="my_experiments")
+# 创建实验运行器，可自定义平滑度梯度和随机种子策略
+runner = MCRExperimentRunner(
+  output_base_dir="my_experiments",
+  smoothness_strengths=[0.1, 0.2, 0.5, 1.0],  # 自定义惩罚因子范围
+  base_random_seed="time"                     # 使用实时种子获得完全随机的初始化
+)
 
 # 运行实验
 runner.run_multi_round_experiment(
@@ -80,6 +102,8 @@ runner.run_multi_round_experiment(
     target_lof=0.2                      # 目标LOF值 (%)
 )
 ```
+
+> ℹ️ 默认情况下，`base_random_seed` 使用固定值保证结果可复现；传入 `"time"` 可让每次实验使用不同的随机种子。`smoothness_strengths` 也可以传入任意升序列表，以扩展或缩小惩罚因子测试范围。
 
 ## 约束配置
 
@@ -123,6 +147,10 @@ configurations = runner._create_constraint_configurations()
 }
 ```
 
+- `experiment_summary.json` 同步拷贝至实验根目录，便于快速查看。
+- `all_results.csv` 为全部运行的平铺数据，可直接用于Excel或Pandas分析。
+- 如果安装了 `openpyxl`，还会生成 `experiment_results.xlsx`（含约束/组分多表汇总）。
+
 ### 关键性能指标
 
 - **成功率 (success_rate)**: 收敛成功的实验比例
@@ -137,6 +165,7 @@ configurations = runner._create_constraint_configurations()
 - 各约束类型的成功率和LOF表现
 - 最佳约束类型推荐
 - 约束强度与性能的关系
+- `constraint_lof_summary.csv` 提供按约束汇总的完整表格，方便筛选目标LOF < 0.2% 的配置。
 
 ### 组分扩展性分析 (level3_component_scaling/)
 
@@ -145,6 +174,7 @@ configurations = runner._create_constraint_configurations()
 - 不同组分数量的LOF表现
 - 计算复杂度评估
 - 扩展性评级（优秀/良好/受限）
+- `component_lof_summary.csv` 汇总每个组分数量的关键指标。
 
 ### 参数调优分析 (level4_parameter_tuning/)
 
@@ -153,6 +183,21 @@ configurations = runner._create_constraint_configurations()
 - 参数敏感性分析
 - 最优参数推荐
 - 性能稳定性评估
+
+### 平铺数据记录 (data/)
+
+`data/lof_records.csv` 为所有实验运行的明细表，包含约束类型、组分数量、随机种子、最终LOF、是否收敛以及计算时间，可直接导入数据分析工具进行进一步筛选与可视化。
+
+### 实验配置记录 (experiment_config.json)
+
+实验根目录与 `level1_summary/` 下都会生成 `experiment_config.json`，记录本次运行的全部关键参数，包括：
+
+- 组分数量范围、随机运行次数、迭代次数等基础设置
+- 平滑度强度列表与约束名称
+- 随机种子策略与基础随机种子值（便于复现实验）
+- 输出目录信息与时间戳
+
+该文件可用于审计实验、复现设置或与团队共享实验方案。
 
 ## 可视化图表
 
@@ -237,6 +282,8 @@ runner.run_multi_round_experiment(
 - 便于人工查看和分析
 - 包含多个工作表的分类汇总
 - 支持数据透视和图表制作
+
+> 💡 **可选依赖提醒**：若需要生成 `experiment_results.xlsx`，请先安装 `openpyxl`（`pip install openpyxl`）。未安装时框架会自动跳过Excel导出，仅保留JSON/CSV输出，并在控制台给出提示。
 
 ### CSV格式矩阵
 - 浓度矩阵和光谱矩阵的原始数据
