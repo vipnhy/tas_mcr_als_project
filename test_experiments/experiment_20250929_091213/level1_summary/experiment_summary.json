@@ -1,0 +1,33 @@
+{
+  "experiment_metadata": {
+    "timestamp": "20250929_091213",
+    "total_experiments": 24,
+    "target_lof": 0.2,
+    "successful_convergence": 24,
+    "target_lof_achieved": 0
+  },
+  "overall_performance": {
+    "success_rate": 100.0,
+    "target_achievement_rate": 0.0,
+    "average_lof": 16.44655034048053,
+    "median_lof": 16.456428255799818,
+    "best_lof": 5.3737304724568675,
+    "average_iterations": 19.166666666666668,
+    "average_computation_time": 0.008816669384638468
+  },
+  "best_configurations": {
+    "best_overall_lof": {
+      "experiment_id": "basic_comp2_seed42",
+      "lof": 5.3737304724568675,
+      "constraint_type": "basic",
+      "n_components": 2
+    }
+  },
+  "component_scalability": {
+    "optimal_component_count": 2,
+    "performance_by_components": {
+      "1": 27.491368222233167,
+      "2": 5.401732458727899
+    }
+  }
+}

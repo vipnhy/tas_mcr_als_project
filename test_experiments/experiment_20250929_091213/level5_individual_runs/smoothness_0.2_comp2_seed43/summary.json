@@ -1,0 +1,11 @@
+{
+  "experiment_id": "smoothness_0.2_comp2_seed43",
+  "n_components": 2,
+  "constraint_type": "smoothness_0.2",
+  "constraint_strength": 0.2,
+  "random_seed": 43,
+  "iterations_to_converge": 34,
+  "final_lof": 5.398437427997744,
+  "converged": true,
+  "computation_time": 0.016587257385253906
+}

@@ -1,0 +1,21 @@
+{
+  "component_scaling_analysis": {
+    "1": {
+      "total_runs": 12,
+      "success_rate": 100.0,
+      "target_achievement_rate": 0.0,
+      "average_lof": 27.491368222233167,
+      "best_lof": 27.488992671982626,
+      "complexity_impact": "低复杂度"
+    },
+    "2": {
+      "total_runs": 12,
+      "success_rate": 100.0,
+      "target_achievement_rate": 0.0,
+      "average_lof": 5.401732458727899,
+      "best_lof": 5.3737304724568675,
+      "complexity_impact": "低复杂度"
+    }
+  },
+  "scalability_assessment": "优秀扩展性"
+}

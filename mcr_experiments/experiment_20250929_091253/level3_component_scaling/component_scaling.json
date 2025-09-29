@@ -1,0 +1,37 @@
+{
+  "component_scaling_analysis": {
+    "1": {
+      "total_runs": 30,
+      "success_rate": 100.0,
+      "target_achievement_rate": 0.0,
+      "average_lof": 100.0,
+      "best_lof": 100.0,
+      "complexity_impact": "低复杂度"
+    },
+    "2": {
+      "total_runs": 30,
+      "success_rate": 100.0,
+      "target_achievement_rate": 0.0,
+      "average_lof": 28.062678341446095,
+      "best_lof": 28.06125484235105,
+      "complexity_impact": "低复杂度"
+    },
+    "3": {
+      "total_runs": 30,
+      "success_rate": 100.0,
+      "target_achievement_rate": 0.0,
+      "average_lof": 14.355765297857138,
+      "best_lof": 14.352738048312256,
+      "complexity_impact": "低复杂度"
+    },
+    "4": {
+      "total_runs": 30,
+      "success_rate": 0.0,
+      "target_achievement_rate": 0.0,
+      "average_lof": 14.883393676835432,
+      "best_lof": 14.42562646802392,
+      "complexity_impact": "低复杂度"
+    }
+  },
+  "scalability_assessment": "扩展性受限"
+}
