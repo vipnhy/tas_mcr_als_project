@@ -1,0 +1,11 @@
+{
+  "experiment_id": "combined_comp2_seed45",
+  "n_components": 2,
+  "constraint_type": "combined",
+  "constraint_strength": 0.0,
+  "random_seed": 45,
+  "iterations_to_converge": 4,
+  "final_lof": 27.836274469003115,
+  "converged": true,
+  "computation_time": 0.029702186584472656
+}
