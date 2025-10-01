@@ -174,7 +174,7 @@ def create_preview_plots(wavelengths, time_delays, data, title, output_file):
     
     # 2D热图
     ax1 = axes[0, 0]
-    im = ax1.imshow(data, aspect='auto', cmap='RdBu_r',
+    im = ax1.imshow(data, aspect='auto', cmap='rainbow',
                    extent=[time_delays.min(), time_delays.max(),
                           wavelengths.max(), wavelengths.min()])
     ax1.set_xlabel('时间延迟 (ps)')

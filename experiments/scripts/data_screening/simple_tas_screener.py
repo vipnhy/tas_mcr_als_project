@@ -42,22 +42,111 @@ class SimpleTASScreener:
         }
     
     def load_tas_file(self, file_path):
-        """加载TAS文件"""
+        """加载TAS文件 - 修复版本，支持跳过元数据头和自动检测分隔符"""
         try:
-            # 读取CSV文件，第一行为时间延迟，第一列为波长
-            df = pd.read_csv(file_path, index_col=0)
+            print(f"   正在加载: {Path(file_path).name}")
             
-            # 获取波长和时间延迟
-            wavelengths = df.index.values.astype(float)
-            time_delays = df.columns.astype(float)
-            data = df.values
+            # 首先尝试读取原始CSV
+            with open(file_path, 'r') as f:
+                lines = f.readlines()
+            
+            # 跳过可能的头部信息，自动检测分隔符
+            data_start = 0
+            separator = ','
+            first_line = ""
+            
+            for i, line in enumerate(lines):
+                if line.strip() and (',' in line or '\t' in line):
+                    # 检测分隔符
+                    if '\t' in line and ',' not in line:
+                        sep = '\t'
+                    else:
+                        sep = ','
+                    
+                    try:
+                        # 尝试解析第一值为数字
+                        first_val = line.split(sep)[0]
+                        float(first_val)
+                        data_start = i
+                        separator = sep
+                        first_line = line
+                        print(f"   找到数据起始行: {i+1}, 分隔符: '{separator}', 第一值: {first_val}")
+                        break
+                    except:
+                        continue
+            
+            if data_start >= len(lines) - 5:
+                print("   ❌ 找不到有效数据行")
+                return None
+            
+            # 读取数据部分
+            data_lines = lines[data_start:]
+            
+            # 解析第一行为时间延迟
+            time_delays = []
+            first_line_parts = first_line.split(separator)
+            for val in first_line_parts:
+                try:
+                    time_delays.append(float(val))
+                except:
+                    time_delays.append(0.0)
+            
+            time_delays = np.array(time_delays)
+            
+            # 解析其余行
+            wavelengths = []
+            data_matrix = []
+            
+            for line in data_lines[1:]:
+                if not line.strip():
+                    continue
+                    
+                parts = line.strip().split(separator)
+                if len(parts) < 2:
+                    continue
+                
+                try:
+                    # 第一个值是波长
+                    wl = float(parts[0])
+                    wavelengths.append(wl)
+                    
+                    # 其余值是数据
+                    row_data = []
+                    for val in parts[1:]:
+                        try:
+                            v = float(val)
+                            if np.isfinite(v):
+                                row_data.append(v)
+                            else:
+                                row_data.append(0.0)
+                        except:
+                            row_data.append(0.0)
+                    
+                    # 确保长度匹配
+                    while len(row_data) < len(time_delays):
+                        row_data.append(0.0)
+                    row_data = row_data[:len(time_delays)]
+                    
+                    data_matrix.append(row_data)
+                    
+                except Exception as e:
+                    print(f"   ⚠️ 跳过无效行: {e}")
+                    continue
+            
+            if not wavelengths or not data_matrix:
+                print("   ❌ 没有有效数据")
+                return None
+            
+            # 转换为numpy数组
+            data = np.array(data_matrix)
+            wavelengths = np.array(wavelengths)
             
             # 基本验证
             if data.shape[0] < 10 or data.shape[1] < 10:
+                print("   ❌ 数据维度太小")
                 return None
             
-            # 处理异常值
-            data = np.where(np.isfinite(data), data, 0)
+            print(f"   ✅ 成功加载: {data.shape[0]} 波长 × {data.shape[1]} 时间点")
             
             return {
                 'data': data,
@@ -255,7 +344,7 @@ class SimpleTASScreener:
         
         # 1. 主要2D热图
         ax1 = plt.subplot(3, 4, (1, 2))
-        im = ax1.imshow(data, aspect='auto', cmap='RdBu_r',
+        im = ax1.imshow(data, aspect='auto', cmap='rainbow',
                        extent=[time_delays.min(), time_delays.max(),
                               wavelengths.max(), wavelengths.min()])
         ax1.set_xlabel('时间延迟 (ps)')
@@ -344,7 +433,7 @@ class SimpleTASScreener:
         wl_indices = [len(wavelengths)//6, len(wavelengths)//3, 2*len(wavelengths)//3, 5*len(wavelengths)//6]
         
         for i, wl_idx in enumerate(wl_indices):
-            ax = plt.subplot(3, 4, 10+i)
+            ax = plt.subplot(3, 4, 9+i)  # 修正索引：9, 10, 11, 12
             kinetic = data[wl_idx, :]
             ax.plot(time_delays, kinetic, linewidth=2, color=colors[i])
             ax.set_title(f'λ = {wavelengths[wl_idx]:.0f} nm')
@@ -449,6 +538,8 @@ class SimpleTASScreener:
                 return int(obj)
             elif isinstance(obj, (np.floating, np.float64)):
                 return float(obj)
+            elif isinstance(obj, (bool, np.bool_)):
+                return bool(obj)  # 处理Python和numpy布尔值
             elif isinstance(obj, dict):
                 return {k: convert(v) for k, v in obj.items()}
             elif isinstance(obj, list):

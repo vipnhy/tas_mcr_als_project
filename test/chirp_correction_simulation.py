@@ -156,7 +156,7 @@ def visualize_before_after(
         aspect="auto",
         origin="lower",
         extent=[time_delays.min(), time_delays.max(), wavelengths.min(), wavelengths.max()],
-        cmap="RdBu_r",
+        cmap="rainbow",
         norm=norm,
     )
     axes[0].set_title("Before correction")
@@ -168,7 +168,7 @@ def visualize_before_after(
         aspect="auto",
         origin="lower",
         extent=[time_delays.min(), time_delays.max(), wavelengths.min(), wavelengths.max()],
-        cmap="RdBu_r",
+        cmap="rainbow",
         norm=norm,
     )
     axes[1].set_title("After correction")

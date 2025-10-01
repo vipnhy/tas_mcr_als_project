@@ -349,7 +349,7 @@ class TASDataScreener:
         
         # 1. 热图
         ax1 = axes[0, 0]
-        im1 = ax1.imshow(data, aspect='auto', cmap='RdBu_r', 
+        im1 = ax1.imshow(data, aspect='auto', cmap='rainbow', 
                         extent=[time_delays.min(), time_delays.max(), 
                                wavelengths.max(), wavelengths.min()])
         ax1.set_xlabel('时间延迟 (ps)')

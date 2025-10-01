@@ -375,7 +375,7 @@ class MCRALSBatchAnalyzer:
         wl_range = (max(wl_range[0], actual_min), min(wl_range[1], actual_max))
         
         # 1. 原始数据热图
-        im1 = axes[0, 0].imshow(data, aspect='auto', cmap='RdBu_r',
+        im1 = axes[0, 0].imshow(data, aspect='auto', cmap='rainbow',
                                extent=[time_delays.min(), time_delays.max(),
                                       wavelengths.max(), wavelengths.min()])
         axes[0, 0].set_title(f'原始数据 ({spectrum_type})')
@@ -386,7 +386,7 @@ class MCRALSBatchAnalyzer:
         
         # 2. 重构数据热图
         reconstructed = mcr_result['concentration_profiles'].T @ mcr_result['pure_spectra']
-        im2 = axes[0, 1].imshow(reconstructed.T, aspect='auto', cmap='RdBu_r',
+        im2 = axes[0, 1].imshow(reconstructed.T, aspect='auto', cmap='rainbow',
                                extent=[time_delays.min(), time_delays.max(),
                                       wavelengths.max(), wavelengths.min()])
         axes[0, 1].set_title(f'MCR重构 (R²={mcr_result["r2"]:.3f})')
@@ -397,7 +397,7 @@ class MCRALSBatchAnalyzer:
         
         # 3. 残差热图
         residuals = data - reconstructed.T
-        im3 = axes[0, 2].imshow(residuals, aspect='auto', cmap='RdBu_r',
+        im3 = axes[0, 2].imshow(residuals, aspect='auto', cmap='rainbow',
                                extent=[time_delays.min(), time_delays.max(),
                                       wavelengths.max(), wavelengths.min()])
         axes[0, 2].set_title(f'残差 (LOF={mcr_result["lof"]:.2f}%)')

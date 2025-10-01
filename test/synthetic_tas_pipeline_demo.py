@@ -132,7 +132,7 @@ def plot_heatmaps(results: Dict[str, pd.DataFrame], dataset: SyntheticDataset) -
     if abs_max == 0 or not np.isfinite(abs_max):
         abs_max = 1.0
     norm = TwoSlopeNorm(vcenter=0.0, vmin=-abs_max, vmax=abs_max)
-    cmap = plt.get_cmap("RdBu_r")
+    cmap = plt.get_cmap("rainbow")
 
     fig, axes = plt.subplots(1, 3, figsize=(16, 4), sharey=True)
     titles = ["Original", "After cropping", "After chirp correction"]

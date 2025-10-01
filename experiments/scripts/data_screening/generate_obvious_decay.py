@@ -63,7 +63,7 @@ def save_and_test():
     
     # 2D热图
     ax1 = axes[0, 0]
-    im = ax1.imshow(data, aspect='auto', cmap='RdBu_r',
+    im = ax1.imshow(data, aspect='auto', cmap='rainbow',
                    extent=[td.min(), td.max(), wl.max(), wl.min()])
     ax1.set_xlabel('时间延迟 (ps)')
     ax1.set_ylabel('波长 (nm)')

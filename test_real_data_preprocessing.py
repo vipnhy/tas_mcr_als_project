@@ -523,7 +523,7 @@ def create_comprehensive_visualization(original_data, processed_results):
         abs_max = 1.0
 
     norm = TwoSlopeNorm(vcenter=0.0, vmin=-abs_max, vmax=abs_max)
-    cmap = plt.get_cmap('RdBu_r')
+    cmap = plt.get_cmap('rainbow')
     
     # 原始数据
     im0 = axes_list[0].imshow(original_data.values, aspect='auto', origin='lower',
@@ -927,7 +927,7 @@ def visualize_chirp_correction_results(results, wavelengths, time_delays):
     if abs_max == 0 or not np.isfinite(abs_max):
         abs_max = 1.0
     norm = TwoSlopeNorm(vcenter=0.0, vmin=-abs_max, vmax=abs_max)
-    cmap = plt.get_cmap('RdBu_r')
+    cmap = plt.get_cmap('rainbow')
 
     plot_idx = 0
     for method, data_dict in results.items():
