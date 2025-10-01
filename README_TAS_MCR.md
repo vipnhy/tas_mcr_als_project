@@ -18,13 +18,20 @@
 - 包含收敛判断和迭代控制
 - 提供拟合质量评估 (LOF)
 
-### 3. 主分析程序 (`main.py`)
+### 3. 主分析程序 (`main.py` / `run_main.py`)
 - 集成数据读取和 MCR-ALS 分析
 - 自动可视化分析结果
 - 支持实际 TAS 数据和合成数据
 - 包含错误处理和回退机制
 
-### 4. 测试模块 (`test/`)
+### 4. **全局拟合模块 (`Globalfit/`) ⭐ 新增**
+- **全局寿命分析 (GLA)**: 多指数衰减拟合
+- **全局目标分析 (GTA)**: 基于动力学模型的拟合
+- **无缝集成**: 自动使用MCR-ALS结果作为输入
+- **多种动力学模型**: 顺序反应、平行反应、混合模型
+- **详细说明**: 参见 [Globalfit模块使用说明](Globalfit/README.md)
+
+### 5. 测试模块 (`test/`)
 - `test_MCR_ALS.py`: 基本 MCR-ALS 功能测试
 - `test_real_data.py`: 实际 TAS 数据分析测试
 
@@ -35,8 +42,8 @@
 # 激活虚拟环境
 D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe
 
-# 安装依赖包
-pip install numpy matplotlib pandas scikit-learn scipy
+# 安装依赖包 (包括全局拟合所需的lmfit)
+pip install numpy matplotlib pandas scikit-learn scipy lmfit
 ```
 
 ### 运行主程序
@@ -175,14 +182,33 @@ tas_mcr_als_project/
 ├── mcr/
 │   ├── mcr_als.py          # MCR-ALS 算法实现
 │   ├── constraints.py      # 约束条件
-│   └── initializers.py     # 初始化方法
+│   ├── initializers.py     # 初始化方法
+│   └── constraint_config.py # 约束配置
+├── Globalfit/              # ⭐ 全局拟合模块
+│   ├── __init__.py
+│   ├── kinetic_models.py   # 动力学模型
+│   ├── model.py            # GLA和GTA核心算法
+│   ├── interface.py        # MCR-ALS接口
+│   ├── utils.py            # 工具函数
+│   ├── examples/           # 示例脚本
+│   │   ├── auto_workflow.py          # 自动化工作流程
+│   │   └── run_global_fit_example.py # 详细示例
+│   ├── docs/               # 文档
+│   │   ├── README_GLOBALFIT.md       # 完整说明
+│   │   └── WORKFLOW_GUIDE.md         # 工作流程指南
+│   ├── tests/              # 测试
+│   │   └── test_basic_functionality.py
+│   └── README.md           # 模块说明
 ├── test/
-│   ├── test_MCR_ALS.py     # 基本功能测试
+│   ├── test_MCR_ALS.py     # MCR-ALS 功能测试
 │   └── test_real_data.py   # 实际数据测试
 ├── utils/
 │   ├── metrics.py          # 评估指标
 │   └── plotting.py         # 绘图工具
-└── results/                 # 输出结果目录 (自动创建)
+├── preprocessing/          # 数据预处理
+├── experiments/            # 实验脚本
+├── flask/                  # Web界面 (可选)
+└── results/                # 输出结果目录 (自动创建)
 ```
 
 ## 在测试文件夹中导入主目录模块的方法
@@ -274,9 +300,84 @@ python test/test_MCR_ALS.py
 & "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --file_path "data/TAS/TA_Average.csv" --language english --save_plots --save_results --output_dir "results_en"
 ```
 
+## 完整分析工作流程: MCR-ALS → 全局拟合
+
+本项目提供了从MCR-ALS分析到全局拟合的完整自动化工作流程。
+
+### 步骤1: 运行MCR-ALS分析
+
+```bash
+# 使用run_main.py进行MCR-ALS分析
+python run_main.py --file_path "data/TAS/TA_Average.csv" \
+    --n_components 3 \
+    --wavelength_range 420 750 \
+    --delay_range 0.1 50 \
+    --save_plots \
+    --save_results \
+    --output_dir "results"
+```
+
+这将在 `results/` 目录下生成:
+- `concentration_profiles.csv` - 浓度矩阵
+- `pure_spectra.csv` - 纯光谱矩阵
+- `lof_history.csv` - LOF收敛历史
+- `analysis_parameters.json` - 分析参数
+- `mcr_als_results.png` - 可视化结果
+
+### 步骤2: 运行全局拟合分析
+
+```bash
+# 切换到Globalfit示例目录
+cd Globalfit/examples
+
+# 运行自动化全局拟合工作流程
+python auto_workflow.py --mcr_results ../../results --data_file ../../data/TAS/TA_Average.csv
+```
+
+或者只运行特定的分析方法:
+
+```bash
+# 只运行GLA (全局寿命分析)
+python auto_workflow.py --mcr_results ../../results --method gla
+
+# 只运行GTA顺序模型 (全局目标分析)
+python auto_workflow.py --mcr_results ../../results --method gta --model sequential
+
+# 只运行GTA平行模型
+python auto_workflow.py --mcr_results ../../results --method gta --model parallel
+```
+
+全局拟合结果将保存在 `results/global_fit/` 目录下:
+```
+results/global_fit/
+├── gla/                          # GLA结果
+├── gta_sequential/               # GTA顺序模型结果
+├── gta_parallel/                 # GTA平行模型结果
+├── comparison_mcr_gla.png        # MCR vs GLA比较图
+├── comparison_mcr_gta_sequential.png
+└── comparison_mcr_gta_parallel.png
+```
+
+### 方法比较
+
+| 方法 | 说明 | 优点 | 适用场景 |
+|------|------|------|----------|
+| **MCR-ALS** | 无模型假设的分解 | 快速、灵活 | 初步分析，组分分离 |
+| **GLA** | 多指数衰减拟合 | 简单、直观 | 获取特征寿命 |
+| **GTA (顺序)** | A→B→C模型 | 物理意义明确 | 串联反应机理 |
+| **GTA (平行)** | A→B,C,D模型 | 物理意义明确 | 并行衰减通道 |
+
+### 详细文档
+
+- [Globalfit模块完整说明](Globalfit/docs/README_GLOBALFIT.md)
+- [完整工作流程指南](Globalfit/docs/WORKFLOW_GUIDE.md)
+- [Globalfit快速开始](Globalfit/README.md)
+
+---
+
 可以进一步添加的功能：
 - 更多约束条件（非负性、单峰性等）
 - 不同的初始化方法
 - 自动组分数量选择
 - 批量数据处理
-- 结果导出功能
+- 更多动力学模型
