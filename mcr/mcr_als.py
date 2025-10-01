@@ -4,6 +4,8 @@ from . import constraints
 from .constraint_config import ConstraintConfig
 from typing import Optional, Union, Dict, Any
 
+import numpy.typing as npt
+
 
 class MCRALS:
     """
@@ -14,7 +16,9 @@ class MCRALS:
     """
 
     def __init__(self, n_components: int, max_iter: int = 100, tol: float = 1e-6,
-                 constraint_config: Optional[Union[str, ConstraintConfig]] = None):
+                 constraint_config: Optional[Union[str, ConstraintConfig]] = None,
+                 penalty: float = 0.0, init_method: str = "svd",
+                 random_state: Optional[int] = None):
         """
         Initializes the MCRALS solver.
 
@@ -50,6 +54,12 @@ class MCRALS:
         self.n_components = n_components
         self.max_iter = max_iter
         self.tol = tol
+        self.penalty = max(0.0, float(penalty))
+        self.penalty_scale = 0.1
+        self.init_method = init_method.lower()
+        if self.init_method not in {"svd", "random"}:
+            raise ValueError("init_method must be 'svd' or 'random'")
+        self.random_state = random_state
         
         # Results will be stored here after fitting
         self.C_opt_ = None  # Optimal concentration matrix
@@ -67,6 +77,17 @@ class MCRALS:
         # Vh is (n, n), we take the first k rows and transpose it to get (n, k)
         S_initial = Vh[:self.n_components, :].T
         return S_initial
+
+    def _initial_guess_random(self, D: np.ndarray) -> npt.NDArray[np.float64]:
+        """Generates a randomised initial guess for the S matrix based on SVD with perturbations."""
+        base = self._initial_guess_svd(D)
+        rng = np.random.default_rng(self.random_state)
+        noise = rng.standard_normal(size=base.shape)
+        scale = np.linalg.norm(base) / np.sqrt(base.size)
+        if not np.isfinite(scale) or scale == 0:
+            scale = 1.0
+        perturbed = base + 0.05 * scale * noise
+        return perturbed
 
     def _calculate_lof(self, D: np.ndarray, D_reconstructed: np.ndarray) -> float:
         """Calculates the Lack of Fit in percent."""
@@ -109,13 +130,15 @@ class MCRALS:
         Parameters:
         - D (np.ndarray): The experimental data matrix (m_times x n_wavelengths).
         - S_initial (np.ndarray, optional): An initial guess for the S matrix.
-          If None, SVD will be used to generate one.
+          If None, SVD or random initialisation will be used based on init_method.
         """
-        m, n = D.shape
-        
-        # 1. Initial Guess for S
+        _, n = D.shape
+
         if S_initial is None:
-            S = self._initial_guess_svd(D)
+            if self.init_method == "svd":
+                S = self._initial_guess_svd(D)
+            else:
+                S = self._initial_guess_random(D)
         else:
             if S_initial.shape != (n, self.n_components):
                 raise ValueError(f"Initial S must have shape ({n}, {self.n_components})")
@@ -124,46 +147,74 @@ class MCRALS:
         # Apply constraints to initial guess
         S = self._apply_constraints(S, "S")
 
-        # 2. Iterative Optimization Loop
-        for i in range(self.max_iter):
-            # --- Step A: Solve for C, given S ---
-            # C = D * pinv(S) = D * S * (S.T * S)^-1
-            # Using pseudoinverse (pinv) for numerical stability
-            S_pinv = np.linalg.pinv(S)
-            # C = D @ S_pinv.T since S_pinv is (k, n) and we need (m, k)
-            C = D @ S_pinv.T
-            
-            # Apply constraints on C
+        self.lof_ = []
+        identity = np.eye(self.n_components, dtype=D.dtype)
+        converged = False
+
+        for iteration in range(self.max_iter):
+            # Step 1: solve for C given S
+            if self.penalty > 0:
+                sts_base = S.T @ S
+                scale = np.trace(sts_base) / self.n_components
+                if not np.isfinite(scale) or scale == 0:
+                    scale = 1.0
+                reg_strength = self.penalty * self.penalty_scale * scale
+                sts = sts_base + reg_strength * identity
+                try:
+                    C = np.linalg.solve(sts, S.T @ D.T).T
+                except np.linalg.LinAlgError:
+                    C = D @ np.linalg.pinv(S).T
+            else:
+                C = D @ np.linalg.pinv(S).T
+
             C = self._apply_constraints(C, "C")
 
-            # --- Step B: Solve for S, given C ---
-            # S = pinv(C) * D = (C.T * C)^-1 * C.T * D
-            # Transposing the equation: S.T = pinv(C) * D -> S = D.T * pinv(C.T)
-            C_pinv = np.linalg.pinv(C)
-            # S = D.T @ C_pinv.T since C_pinv is (k, m) and we need (n, k)
-            S = D.T @ C_pinv.T
+            # Step 2: solve for S given C
+            if self.penalty > 0:
+                ctc_base = C.T @ C
+                scale_c = np.trace(ctc_base) / self.n_components
+                if not np.isfinite(scale_c) or scale_c == 0:
+                    scale_c = 1.0
+                reg_strength_c = self.penalty * self.penalty_scale * scale_c
+                ctc = ctc_base + reg_strength_c * identity
+                try:
+                    S = np.linalg.solve(ctc, C.T @ D).T
+                except np.linalg.LinAlgError:
+                    S = D.T @ np.linalg.pinv(C).T
+            else:
+                S = D.T @ np.linalg.pinv(C).T
 
-            # Apply constraints on S
             S = self._apply_constraints(S, "S")
 
-            # --- Convergence Check ---
+            # Normalize component scales to avoid numerical blow-up
+            component_norms = np.linalg.norm(S, axis=0)
+            component_norms[component_norms == 0] = 1.0
+            S = S / component_norms
+            C = C * component_norms
+
+            # Convergence check
             D_reconstructed = C @ S.T
             lof = self._calculate_lof(D, D_reconstructed)
-            
-            if i > 0 and abs(self.lof_[-1] - lof) < self.tol:
-                print(f"Converged at iteration {i+1} with LOF = {lof:.4f}%")
-                break
-            
             self.lof_.append(lof)
-            
-            if i == self.max_iter - 1:
-                print(f"Maximum iterations ({self.max_iter}) reached. LOF = {lof:.4f}%")
 
-        # 3. Store Results
+            if len(self.lof_) > 1 and abs(self.lof_[-2] - self.lof_[-1]) < self.tol:
+                print(f"Converged at iteration {iteration + 1} with LOF = {lof:.4f}%")
+                converged = True
+                break
+
+        if not self.lof_:
+            # Ensure at least one LOF value is recorded
+            D_reconstructed = C @ S.T
+            self.lof_.append(self._calculate_lof(D, D_reconstructed))
+
+        if not converged:
+            print(f"Maximum iterations ({self.max_iter}) reached. LOF = {self.lof_[-1]:.4f}%")
+
+        # Store results
         self.C_opt_ = C
         self.S_opt_ = S
         self.residuals_ = D - (C @ S.T)
-        
+
         return self
     
     def get_constraint_info(self) -> Dict[str, Any]:

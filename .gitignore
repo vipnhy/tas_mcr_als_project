@@ -5,6 +5,7 @@ flask/uploads/
 
 
 
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -97,6 +98,7 @@ demo_experiments/
 problem_statement_experiment/
 test_experiments/
 mcr_experiments/
+experiments/results/
 
 # Log files
 *.log

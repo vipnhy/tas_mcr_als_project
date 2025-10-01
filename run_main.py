@@ -131,7 +131,9 @@ class TASAnalyzer:
     """TAS MCR-ALS分析器类"""
     
     def __init__(self, file_path, file_type="handle", wavelength_range=(400, 800), 
-                 delay_range=(0, 10), n_components=3, language='chinese'):
+                 delay_range=(0, 10), n_components=3, language='chinese',
+                 constraint_config=None, penalty=0.0, init_method='svd',
+                 random_seed=None):
         """
         初始化分析器
         
@@ -149,6 +151,10 @@ class TASAnalyzer:
         self.delay_range = delay_range
         self.n_components = n_components
         self.language = language
+        self.constraint_config = constraint_config
+        self.penalty = penalty
+        self.init_method = init_method
+        self.random_seed = random_seed
         
         # 设置字体和标签
         setup_matplotlib_fonts(language)
@@ -214,10 +220,14 @@ class TASAnalyzer:
         try:
             # 初始化和运行MCR-ALS
             self.mcr_solver = MCRALS(
-                n_components=self.n_components, 
-                max_iter=max_iter, 
-                tol=tol
-            )
+                    n_components=self.n_components,
+                    max_iter=max_iter,
+                    tol=tol,
+                    constraint_config=self.constraint_config,
+                    penalty=self.penalty,
+                    init_method=self.init_method,
+                    random_state=self.random_seed
+                )
             self.mcr_solver.fit(self.D)
             
             # 获取结果
@@ -369,7 +379,11 @@ class TASAnalyzer:
             'n_components': self.n_components,
             'final_lof': float(self.mcr_solver.lof_[-1]),
             'iterations': len(self.mcr_solver.lof_),
-            'data_shape': self.D.shape
+            'data_shape': self.D.shape,
+            'penalty': self.penalty,
+            'init_method': self.init_method,
+            'random_seed': self.random_seed,
+            'constraint_config': self.constraint_config if isinstance(self.constraint_config, str) else None
         }
         
         with open(os.path.join(output_dir, "analysis_parameters.json"), 'w') as f:
@@ -404,6 +418,15 @@ def parse_arguments():
                        help='最大迭代次数 (默认: 200)')
     parser.add_argument('--tol', type=float, default=1e-7,
                        help='收敛容差 (默认: 1e-7)')
+    parser.add_argument('--penalty', type=float, default=None,
+                       help='正则化惩罚因子 (默认: 0.0)')
+    parser.add_argument('--init_method', type=str, default=None,
+                       choices=['svd', 'random'],
+                       help="初始值策略: 'svd' 或 'random' (默认: svd)")
+    parser.add_argument('--random_seed', type=int, default=None,
+                       help='随机初始化的随机种子 (默认: None)')
+    parser.add_argument('--constraint_config', type=str, default=None,
+                       help='约束配置文件路径 (默认: 使用内置配置)')
     
     # 输出选项
     parser.add_argument('--save_plots', action='store_true',
@@ -471,6 +494,18 @@ def interactive_input():
     else:
         n_components = 3
     
+    penalty_input = input("正则化惩罚因子 [默认: 0.0]: ").strip()
+    penalty = float(penalty_input) if penalty_input else 0.0
+
+    init_input = input("初始值策略 (svd/random) [默认: svd]: ").strip().lower()
+    init_method = init_input if init_input in ['svd', 'random'] else 'svd'
+
+    seed_input = input("随机种子 (留空表示随机): ").strip()
+    random_seed = int(seed_input) if seed_input else None
+
+    constraint_input = input("约束配置文件路径 (可选): ").strip()
+    constraint_config = constraint_input if constraint_input else None
+
     # 语言选择
     lang_input = input("界面语言 (chinese/english) [默认: chinese]: ").strip().lower()
     if lang_input in ['english', 'en', 'e']:
@@ -484,7 +519,11 @@ def interactive_input():
         'wavelength_range': wavelength_range,
         'delay_range': delay_range,
         'n_components': n_components,
-        'language': language
+        'language': language,
+        'penalty': penalty,
+        'init_method': init_method,
+        'random_seed': random_seed,
+        'constraint_config': constraint_config
     }
 
 
@@ -516,6 +555,32 @@ def main():
         if 'language' not in params:
             params['language'] = 'chinese'
     
+    # 合并可选参数和默认值
+    if args.constraint_config is not None:
+        params['constraint_config'] = args.constraint_config
+    else:
+        params.setdefault('constraint_config', None)
+
+    if args.penalty is not None:
+        params['penalty'] = args.penalty
+    else:
+        params.setdefault('penalty', 0.0)
+
+    if args.init_method is not None:
+        params['init_method'] = args.init_method
+    else:
+        params.setdefault('init_method', 'svd')
+
+    if args.random_seed is not None:
+        params['random_seed'] = args.random_seed
+    else:
+        params.setdefault('random_seed', None)
+
+    params['penalty'] = float(params.get('penalty', 0.0))
+    params['init_method'] = str(params.get('init_method', 'svd')).lower()
+    if params['init_method'] not in ['svd', 'random']:
+        params['init_method'] = 'svd'
+
     print("\n=== 分析参数 ===")
     for key, value in params.items():
         print(f"{key}: {value}")
