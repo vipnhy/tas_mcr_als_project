@@ -37,11 +37,8 @@ python run_main.py \
 ### 步骤2: 运行全局拟合 (1分钟)
 
 ```bash
-# 切换到Globalfit示例目录
-cd Globalfit/examples
-
-# 运行自动化工作流程
-python auto_workflow.py --mcr_results ../../results
+# 在项目根目录运行
+python Globalfit/examples/auto_workflow.py --mcr_results results
 ```
 
 **输出**: `results/global_fit/` 目录下的全局拟合结果
@@ -98,21 +95,21 @@ GTA最优速率常数:
 ### 只运行GLA
 
 ```bash
-python auto_workflow.py --mcr_results ../../results --method gla
+python Globalfit/examples/auto_workflow.py --mcr_results results --method gla
 ```
 
 ### 只运行GTA顺序模型
 
 ```bash
-python auto_workflow.py --mcr_results ../../results --method gta --model sequential
+python Globalfit/examples/auto_workflow.py --mcr_results results --method gta --model sequential
 ```
 
 ### 提供原始数据文件
 
 ```bash
-python auto_workflow.py \
-    --mcr_results ../../results \
-    --data_file ../../data/TAS/TA_Average.csv
+python Globalfit/examples/auto_workflow.py \
+    --mcr_results results \
+    --data_file data/TAS/TA_Average.csv
 ```
 
 ---

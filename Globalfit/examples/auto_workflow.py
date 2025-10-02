@@ -190,10 +190,19 @@ def main():
     
     args = parser.parse_args()
     
+    # 转换MCR结果路径为绝对路径（相对于项目根目录）
+    if not os.path.isabs(args.mcr_results):
+        # 从脚本位置向上两级到项目根目录
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(script_dir))
+        args.mcr_results = os.path.join(project_root, args.mcr_results)
+    
     # 设置输出目录
     if args.output_dir is None:
         output_dir = os.path.join(args.mcr_results, "global_fit")
     else:
+        if not os.path.isabs(args.output_dir):
+            args.output_dir = os.path.abspath(args.output_dir)
         output_dir = args.output_dir
     
     os.makedirs(output_dir, exist_ok=True)

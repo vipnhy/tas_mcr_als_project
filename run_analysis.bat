@@ -1,51 +1,27 @@
 @echo off
-REM TAS MCR-ALS 分析工具 - Windows 批处理脚本
-REM 使用方法: 双击运行此文件，然后按提示输入参数
+echo [Step 1/2] Running MCR-ALS analysis with plot generation...
+python run_main.py ^
+    --file_path "data/TAS/TA_Average-crop-TCA-tzs-tzs-tzs-chirp.csv" ^
+    --n_components 3 ^
+    --wavelength_range 420 750 ^
+    --delay_range 0.01 10 ^
+    --save_plots ^
+    --save_results ^
+    --output_dir results
 
-echo ================================
-echo     TAS MCR-ALS 分析工具
-echo ================================
-echo.
-
-cd /d "d:\TAS\tas_mcr_als_project"
-
-echo 当前工作目录: %CD%
-echo.
-
-echo 选择运行模式:
-echo 1. 交互式模式 (推荐新用户)
-echo 2. 使用示例配置文件
-echo 3. 自定义命令行参数
-echo 4. 查看帮助信息
-echo.
-
-set /p choice="请选择模式 (1-4): "
-
-if "%choice%"=="1" (
-    echo.
-    echo 启动交互式模式...
-    "D:\TAS\tas_mcr_als_project\venv\Scripts\python.exe" run_main.py
-) else if "%choice%"=="2" (
-    echo.
-    echo 使用示例配置文件运行...
-    "D:\TAS\tas_mcr_als_project\venv\Scripts\python.exe" run_main.py --config config_example.json --save_plots --save_results
-) else if "%choice%"=="3" (
-    echo.
-    set /p filepath="输入数据文件路径: "
-    set /p ncomp="输入组分数量 [默认3]: "
-    if "%ncomp%"=="" set ncomp=3
-    
-    echo.
-    echo 运行分析...
-    "D:\TAS\tas_mcr_als_project\venv\Scripts\python.exe" run_main.py --file_path "%filepath%" --n_components %ncomp% --save_plots --save_results
-) else if "%choice%"=="4" (
-    echo.
-    echo 显示帮助信息...
-    "D:\TAS\tas_mcr_als_project\venv\Scripts\python.exe" run_main.py --help
-) else (
-    echo 无效选择，请重新运行脚本
+if %errorlevel% neq 0 (
+    echo MCR-ALS analysis failed.
+    exit /b %errorlevel%
 )
 
 echo.
-echo 按任意键退出...
-pause >nul
+echo [Step 2/2] Running Global Fit analysis workflow...
+python Globalfit/examples/auto_workflow.py --mcr_results results
+
+if %errorlevel% neq 0 (
+    echo Global Fit analysis failed.
+    exit /b %errorlevel%
+)
+
+echo.
+echo Analysis complete. All results are saved in the 'results' directory.

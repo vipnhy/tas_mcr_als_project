@@ -35,13 +35,34 @@
 - `test_MCR_ALS.py`: 基本 MCR-ALS 功能测试
 - `test_real_data.py`: 实际 TAS 数据分析测试
 
-## 使用方法
+## 完整分析流程 (MCR-ALS + 全局拟合)
+
+### 步骤1: 运行 MCR-ALS 分析
+```bash
+# 使用推荐的参数运行 MCR-ALS
+python run_main.py ^
+    --file_path data/TAS/TA_Average.csv ^
+    --n_components 3 ^
+    --wavelength_range 420 750 ^
+    --delay_range 0.1 50 ^
+    --save_plots ^
+    --save_results ^
+    --output_dir results
+```
+
+### 步骤2: 运行全局拟合分析
+```bash
+# 接着运行自动化全局拟合工作流
+python Globalfit/examples/auto_workflow.py --mcr_results results
+```
+结果将保存在 `results/global_fit` 目录下。
+
+---
+
+## 单独运行 MCR-ALS
 
 ### 环境配置
 ```bash
-# 激活虚拟环境
-D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe
-
 # 安装依赖包 (包括全局拟合所需的lmfit)
 pip install numpy matplotlib pandas scikit-learn scipy lmfit
 ```
@@ -50,8 +71,7 @@ pip install numpy matplotlib pandas scikit-learn scipy lmfit
 
 #### 方法1: 直接运行 main.py
 ```bash
-cd "d:\TAS\tas_mcr_als_project"
-& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" main.py
+python main.py
 ```
 
 #### 方法2: 使用参数化运行工具 run_main.py (推荐)
@@ -59,31 +79,31 @@ cd "d:\TAS\tas_mcr_als_project"
 **命令行参数方式:**
 ```bash
 # 基本用法
-& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --file_path "data/TAS/TA_Average.csv" --n_components 3
+python run_main.py --file_path "data/TAS/TA_Average.csv" --n_components 3
 
 # 完整参数
-& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --file_path "data/TAS/TA_Average-crop-TCA-tzs-tzs-tzs-chirp.csv" --file_type handle --wavelength_range 420 750 --delay_range 0.1 50 --n_components 3 --save_plots --save_results
+python run_main.py --file_path "data/TAS/TA_Average-crop-TCA-tzs-tzs-tzs-chirp.csv" --file_type handle --wavelength_range 420 750 --delay_range 0.1 50 --n_components 3 --save_plots --save_results
 ```
 
 **配置文件方式:**
 ```bash
 # 使用配置文件
-& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py --config config_example.json
+python run_main.py --config config_example.json
 ```
 
 **交互式输入方式:**
 ```bash
 # 交互式参数输入
-& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" run_main.py
+python run_main.py
 ```
 
 ### 运行测试
 ```bash
 # 测试基本功能
-& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe" test/test_MCR_ALS.py
+python test/test_MCR_ALS.py
 
 # 测试实际数据分析
-& "D:/TAS/tas_mcr_als_project/venv/Scripts/python.py" test/test_real_data.py
+python test/test_real_data.py
 ```
 
 ## 数据格式要求

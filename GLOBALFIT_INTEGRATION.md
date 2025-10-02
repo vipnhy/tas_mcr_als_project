@@ -77,8 +77,8 @@ python run_main.py \
 #### 步骤2: 运行全局拟合
 
 ```bash
-cd Globalfit/examples
-python auto_workflow.py --mcr_results ../../results
+# 在项目根目录运行
+python Globalfit/examples/auto_workflow.py --mcr_results results
 ```
 
 #### 步骤3: 查看结果
