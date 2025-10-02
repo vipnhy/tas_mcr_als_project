@@ -31,11 +31,32 @@
 - **多种动力学模型**: 顺序反应、平行反应、混合模型
 - **详细说明**: 参见 [Globalfit模块使用说明](Globalfit/README.md)
 
-### 5. 测试模块 (`test/`)
+### 5. **高级批量工作流 (`analysis_tool/`) ⭐ 新增**
+- **配置驱动**: 使用 `config_workflow.json` 等 JSON 文件配置数据输入、MCR 组分范围、预处理和全局拟合策略
+- **批量执行**: `MCRBatchRunner` 自动遍历组分与初始化种子, 统一保存结果与摘要
+- **多模型全局拟合**: `GlobalFitBatchRunner` 针对每个 MCR 结果尝试 GLA/GTA 多种模型并排序推荐
+- **自动报告**: `AnalysisReporter` 生成 Markdown 报告, 汇总排名、路径与关键指标
+- **一键入口**: `advanced_analysis.py` 将上述流程整合为单个 CLI, 支持参数覆盖与可重复随机种子
+
+### 6. 测试模块 (`test/`)
 - `test_MCR_ALS.py`: 基本 MCR-ALS 功能测试
 - `test_real_data.py`: 实际 TAS 数据分析测试
 
 ## 完整分析流程 (MCR-ALS + 全局拟合)
+
+### 全自动批量工作流 (推荐)
+
+使用新增的 `advanced_analysis.py` 可以一键完成数据加载、MCR 批处理、全局拟合与报告生成：
+
+```powershell
+D:/TAS/tas_mcr_als_project/venv/Scripts/python.exe advanced_analysis.py --config config_workflow.json --verbose
+```
+
+- 默认在 `analysis_runs/` 下按时间戳创建工作目录
+- 自动保存 `mcr/mcr_summary.json`、`global_fit/global_fit_summary.json` 以及最终 `final_report.md`
+- 可通过命令行参数覆盖配置中的分析名称、光谱类型、组分范围与排序指标
+
+执行完成后, 参阅工作目录内的 `final_report.md` 获取排序后的最佳模型与关键信息。
 
 ### 步骤1: 运行 MCR-ALS 分析
 ```bash

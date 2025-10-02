@@ -93,6 +93,9 @@ Thumbs.db
 # results/
 # output/
 
+# Advanced analysis workflow outputs
+analysis_runs/
+
 # Experiment outputs
 demo_experiments/
 problem_statement_experiment/

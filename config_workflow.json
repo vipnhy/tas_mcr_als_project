@@ -1,0 +1,37 @@
+{
+  "analysis": {
+    "name": "demo_vis_batch",
+    "output_root": "analysis_runs",
+    "working_dir_mode": "timestamp"
+  },
+  "input": {
+    "file_path": "data/TAS/TA_Average-crop-TCA-tzs-tzs-tzs-chirp.csv",
+    "file_type": "handle",
+    "spectral_type": "VIS",
+    "delay_range": [0.1, 50.0],
+    "lifetime_window_ps": [0.1, 100.0]
+  },
+  "mcr": {
+    "component_range": [2, 4],
+    "max_iter": 250,
+    "tol": 1e-7,
+    "enforce_nonneg": true,
+    "spectral_nonneg": false,
+    "preprocessing": {
+      "enabled": false,
+      "steps": []
+    },
+    "initialization": {
+      "mode": "random",
+      "runs_per_component": 3,
+      "random_seed": 1234
+    }
+  },
+  "global_fit": {
+    "attempts_per_mcr": 5,
+    "init_strategy": "mcr",
+    "random_seed": 5678,
+    "sort_metric": "lof",
+    "sort_order": "asc"
+  }
+}
