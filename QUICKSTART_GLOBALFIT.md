@@ -49,7 +49,7 @@ python Globalfit/examples/auto_workflow.py --mcr_results results
 
 1. **MCR-ALS结果**: `results/mcr_als_results.png`
 2. **GLA结果**: `results/global_fit/gla/gla_results.png`
-3. **GTA结果**: `results/global_fit/gta_sequential/gta_sequential_results.png`
+3. **GTA结果**: `results/global_fit/sequential_a_to_b_to_c/sequential_a_to_b_to_c_results.png`
 4. **比较图**: `results/global_fit/comparison_mcr_gla.png`
 
 ---

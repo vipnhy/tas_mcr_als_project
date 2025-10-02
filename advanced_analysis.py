@@ -38,6 +38,9 @@ def parse_args() -> argparse.Namespace:
         help="全局拟合排序指标",
     )
     parser.add_argument("--verbose", action="store_true", help="输出调试日志")
+    parser.add_argument("--visualize", action="store_true", help="生成可视化报告")
+    parser.add_argument("--vis-language", choices=["zh", "en"], default="zh",
+                       help="可视化报告语言 (zh: 中文, en: 英文, 默认: zh)")
     return parser.parse_args()
 
 
@@ -96,6 +99,51 @@ def main() -> int:
     reporter = AnalysisReporter(config, working_dir)
     report_path = reporter.generate(mcr_summary, global_summary)
 
+    # 可选阶段 4: 可视化
+    if args.visualize:
+        logger.info("可选阶段: 生成可视化报告")
+        try:
+            from visualize_results import TASResultsVisualizer
+
+            # 找到最佳的全局拟合结果目录
+            global_fit_dir = working_dir / "global_fit"
+            best_result_dir = None
+
+            if global_fit_dir.exists():
+                # 查找最佳结果（根据排序指标）
+                for component_dir in global_fit_dir.iterdir():
+                    if component_dir.is_dir():
+                        for run_dir in component_dir.iterdir():
+                            if run_dir.is_dir():
+                                for method_dir in run_dir.iterdir():
+                                    if method_dir.is_dir():
+                                        for attempt_dir in method_dir.iterdir():
+                                            if attempt_dir.is_dir():
+                                                # 检查是否存在全局拟合输出文件
+                                                conc_file = attempt_dir / "concentration_global_fit.csv"
+                                                spec_file = attempt_dir / "spectra_global_fit.csv"
+                                                if conc_file.exists() and spec_file.exists():
+                                                    best_result_dir = attempt_dir
+                                                    break
+                                        if best_result_dir:
+                                            break
+                                if best_result_dir:
+                                    break
+                        if best_result_dir:
+                            break
+
+            if best_result_dir:
+                visualizer = TASResultsVisualizer(str(best_result_dir), language=args.vis_language)
+                vis_report_path = visualizer.generate_report()
+                logger.info("可视化报告已生成: %s", vis_report_path)
+                print(f"可视化报告: {vis_report_path}")
+            else:
+                logger.warning("未找到合适的全局拟合结果进行可视化")
+        except ImportError:
+            logger.error("无法导入可视化模块，请确保已安装所需依赖")
+        except Exception as e:
+            logger.error("可视化生成失败: %s", e)
+
     logger.info("分析完成! 报告已生成: %s", report_path)
 
     print("\n===== 工作流完成 =====")
@@ -103,6 +151,8 @@ def main() -> int:
     print(f"MCR 摘要: {working_dir / 'mcr' / 'mcr_summary.json'}")
     print(f"全局拟合摘要: {working_dir / 'global_fit' / 'global_fit_summary.json'}")
     print(f"最终报告: {report_path}")
+    if args.visualize:
+        print(f"可视化报告: {vis_report_path if 'vis_report_path' in locals() else '生成失败'}")
 
     return 0
 

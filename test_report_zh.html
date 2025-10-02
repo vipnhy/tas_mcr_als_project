@@ -1,0 +1,82 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TAS MCR-ALS 全局拟合结果可视化报告</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        h1, h2, h3 { color: #333; }
+        .section { margin-bottom: 30px; }
+        .metric { background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .plot { text-align: center; margin: 20px 0; }
+        img { max-width: 100%; height: auto; border: 1px solid #ddd; }
+        .interpretation { background: #e8f4f8; padding: 15px; border-left: 4px solid #4a90e2; margin: 15px 0; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>TAS MCR-ALS 全局拟合结果可视化报告</h1>
+
+    <div class="section">
+        <h2>概述</h2>
+        <p>本报告展示了TAS（Transient Absorption Spectroscopy）分析中MCR-ALS（Multivariate Curve Resolution - Alternating Least Squares）与全局拟合的综合结果。</p>
+        <p><strong>输出目录:</strong> analysis_runs\demo_vis_batch_20251002_102611\global_fit\components_4\run_02_seed_4009801342\gta_sequential\attempt_02</p>
+        <p><strong>分析时间:</strong> 2025-10-02</p>
+    </div>
+
+    <div class="section">
+        <h2>结果解释</h2>
+        <div class="interpretation">
+            <h3>拟合质量概述</h3><p>卡方值 (χ²) = 0.005167，约简卡方值 = 2.91e-07。</p><p>✓ 拟合质量优秀，残差很小。</p><h3>动力学参数分析</h3><p><strong>k_0</strong> = 0.158879 ± 1.1%</p><p><strong>k_1</strong> = 0.159182 ± 5.6%</p><p><strong>k_2</strong> = 0.159177 ± 4.8%</p><p>这些参数代表了不同组分的反应速率常数。</p><h3>数据维度</h3><p>浓度剖面: 74 个时间点 × 4 个组分</p><p>谱数据: 236 个波长点 × 4 个组分</p><h3>分析建议</h3><ul><li>检查残差图是否随机分布（无系统误差）</li><li>验证谱图是否具有合理的形状和特征</li><li>比较不同尝试的拟合结果以选择最佳模型</li><li>考虑物理意义解释动力学参数</li></ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>可视化图表</h2>
+        <div class="plot">
+            <img src="visualization_plots.png" alt="可视化图表">
+            <p><em>图1: 全局拟合结果综合图表，包含浓度剖面、谱图、残差和质量指标</em></p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>拟合质量评估</h2>
+        <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;'><div class="metric"><strong>fitting method:</strong> leastsq</div><div class="metric"><strong>function evals:</strong> 59.0</div><div class="metric"><strong>data points:</strong> 17775.0</div><div class="metric"><strong>variables:</strong> 3.0</div><div class="metric"><strong>chi-square:</strong> 0.00516664</div><div class="metric"><strong>reduced chi-square:</strong> 2.9072e-07</div><div class="metric"><strong>Akaike info crit:</strong> -267526.957</div><div class="metric"><strong>Bayesian info crit:</strong> -267503.601</div></div>
+    </div>
+
+    <div class="section">
+        <h2>参数分析</h2>
+        <table border='1' style='border-collapse: collapse; width: 100%;'><tr><th>参数</th><th>值</th><th>不确定度</th><th>初始值</th></tr><tr><td>k_0</td><td>0.15887861</td><td>1.10853665</td><td>0.04120313</td></tr><tr><td>k_1</td><td>0.15918231</td><td>5.63876247</td><td>0.03131044</td></tr><tr><td>k_2</td><td>0.15917713</td><td>4.84146101</td><td>0.2764216</td></tr></table>
+    </div>
+
+    <div class="section">
+        <h2>数据摘要</h2>
+        <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;'>
+                <div class="metric">
+                    <strong>Concentration</strong><br>
+                    74 行 × 列 4<br>
+                    <small>数据类型: float64</small>
+                </div>
+                <div class="metric">
+                    <strong>Spectra</strong><br>
+                    236 行 × 列 4<br>
+                    <small>数据类型: float64</small>
+                </div>
+                <div class="metric">
+                    <strong>Residuals</strong><br>
+                    75 行 × 列 237<br>
+                    <small>数据类型: float64</small>
+                </div></div>
+    </div>
+
+    <div class="section">
+        <h2>使用说明</h2>
+        <p>本报告由TAS分析工具自动生成。如需重新生成，请运行：</p>
+        <pre><code>python visualize_results.py "analysis_runs\demo_vis_batch_20251002_102611\global_fit\components_4\run_02_seed_4009801342\gta_sequential\attempt_02"</code></pre>
+    </div>
+</body>
+</html>
+        

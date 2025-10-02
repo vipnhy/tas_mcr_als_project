@@ -8,17 +8,11 @@ import math
 import os
 import zlib
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from Globalfit import (
-    GlobalLifetimeAnalysis,
-    GlobalTargetAnalysis,
-    MCRALSInterface,
-    ParallelModel,
-    SequentialModel,
-)
+from Globalfit import GlobalTargetAnalysis, MCRALSInterface, ParallelModel, SequentialModel
 from Globalfit.kinetic_models import MixedModel
 from Globalfit.utils import export_results_to_txt
 
@@ -138,16 +132,24 @@ class GlobalFitBatchRunner:
                     "混合模型 network 在 %d 个组分下为空，跳过", n_components
                 )
                 return []
+        if model_spec.type == "gla":
+            logger.info("跳过 GLA 模型: %s", model_spec.label or "gla")
+            return []
+
+        folder_name, display_label = self._resolve_model_names(model_spec, n_components)
+        seed_offset = self._seed_offset(run_info, folder_name)
+
         results: List[Dict[str, Any]] = []
         for attempt in range(self.config.global_fit.attempts_per_mcr):
             try:
-                seed_offset = self._seed_offset(run_info, model_spec.resolved_label())
                 result = self._execute_single_attempt(
                     interface,
                     run_info,
                     model_spec,
                     attempt,
                     seed_offset,
+                    folder_name,
+                    display_label,
                 )
                 if result:
                     results.append(result)
@@ -169,50 +171,34 @@ class GlobalFitBatchRunner:
         model_spec: GlobalModelSpec,
         attempt_index: int,
         seed_offset: int,
+        folder_name: str,
+        display_label: str,
     ) -> Optional[Dict[str, Any]]:
         n_components = interface.C_mcr.shape[1]
-        label = model_spec.resolved_label()
         relative_parts = list(Path(run_info["output_dir"]).parts)
         if relative_parts and relative_parts[0] == "mcr":
             relative_parts = relative_parts[1:]
-        model_dir = self.global_dir.joinpath(*relative_parts, label)
+        model_dir = self.global_dir.joinpath(*relative_parts, folder_name)
         attempt_dir = model_dir / f"attempt_{attempt_index + 1:02d}"
         attempt_dir.mkdir(parents=True, exist_ok=True)
 
-        if model_spec.type == "gla":
-            tau_initial = self._generate_lifetime_initials(
-                interface,
-                attempt_index,
-                n_components,
-                seed_offset,
-            )
-            bounds = self._build_lifetime_bounds(tau_initial)
-            fitter = GlobalLifetimeAnalysis(
-                data_matrix=self.dataset["data"],
-                time_axis=self.dataset["time"],
-                wavelength_axis=self.dataset["wavelength"],
-                n_components=n_components,
-            )
-            results = fitter.fit(tau_initial=tau_initial, tau_bounds=bounds)
-            results["kinetic_model"] = "GLA"
-        else:
-            model = self._build_kinetic_model(model_spec, n_components)
-            if model is None:
-                return None
-            k_initial = self._generate_rate_initials(
-                interface,
-                attempt_index,
-                model,
-                seed_offset,
-            )
-            k_bounds = self._build_rate_bounds(k_initial)
-            fitter = GlobalTargetAnalysis(
-                data_matrix=self.dataset["data"],
-                time_axis=self.dataset["time"],
-                wavelength_axis=self.dataset["wavelength"],
-                kinetic_model=model,
-            )
-            results = fitter.fit(k_initial=k_initial, k_bounds=k_bounds)
+        model = self._build_kinetic_model(model_spec, n_components)
+        if model is None:
+            return None
+        k_initial = self._generate_rate_initials(
+            interface,
+            attempt_index,
+            model,
+            seed_offset,
+        )
+        k_bounds = self._build_rate_bounds(k_initial)
+        fitter = GlobalTargetAnalysis(
+            data_matrix=self.dataset["data"],
+            time_axis=self.dataset["time"],
+            wavelength_axis=self.dataset["wavelength"],
+            kinetic_model=model,
+        )
+        results = fitter.fit(k_initial=k_initial, k_bounds=k_bounds)
 
         interface.time_axis = self.dataset["time"]
         interface.wavelength_axis = self.dataset["wavelength"]
@@ -222,7 +208,7 @@ class GlobalFitBatchRunner:
 
         summary = {
             "mcr_output": run_info["output_dir"],
-            "model": label,
+            "model": display_label,
             "attempt": attempt_index + 1,
             "lof": float(results["lof"]),
             "chi_square": float(results["chi_square"]),
@@ -231,30 +217,11 @@ class GlobalFitBatchRunner:
             "n_components": n_components,
             "tau_optimal": [float(x) for x in results.get("tau_optimal", [])],
             "k_optimal": [float(x) for x in results.get("k_optimal", [])],
+            "model_key": folder_name,
         }
         return summary
 
     # ------------------------------------------------------------------
-    def _generate_lifetime_initials(
-        self,
-        interface: MCRALSInterface,
-        attempt_index: int,
-        n_components: int,
-        seed_offset: int,
-    ) -> List[float]:
-        strategy = self.config.global_fit.init_strategy
-        user_values = self.config.global_fit.user_initials.get("gla", [])
-        if strategy == "user" and attempt_index < len(user_values):
-            values = user_values[attempt_index]
-            if len(values) == n_components:
-                return [float(v) for v in values]
-            logger.warning("用户提供的寿命长度与组分不匹配, 使用自动估计")
-
-        lifetimes = interface.estimate_lifetimes_from_mcr()
-        if strategy == "random":
-            return self._random_lifetimes(len(lifetimes), attempt_index, seed_offset)
-        return lifetimes
-
     def _generate_rate_initials(
         self,
         interface: MCRALSInterface,
@@ -281,13 +248,6 @@ class GlobalFitBatchRunner:
         return (rate_constants + rate_constants[: model.n_rate_constants])[: model.n_rate_constants]
 
     # ------------------------------------------------------------------
-    def _random_lifetimes(self, count: int, attempt_index: int, seed_offset: int) -> List[float]:
-        low, high = self._lifetime_window()
-        seed_base = self.config.global_fit.random_seed or 0
-        seed_value = seed_base + seed_offset + attempt_index + 1
-        rng = np.random.default_rng(seed_value)
-        return list(rng.uniform(low, high, size=count))
-
     def _random_rates(self, count: int, attempt_index: int, seed_offset: int) -> List[float]:
         low, high = self._rate_window()
         seed_base = self.config.global_fit.random_seed or 0
@@ -306,10 +266,6 @@ class GlobalFitBatchRunner:
     def _rate_window(self) -> Sequence[float]:
         low, high = self._lifetime_window()
         return (1.0 / high, 1.0 / max(low, 1e-6))
-
-    def _build_lifetime_bounds(self, initial: List[float]) -> List[tuple[float, float]]:
-        low, high = self._lifetime_window()
-        return [(max(low, tau * 0.1), min(high, tau * 10.0)) for tau in initial]
 
     def _build_rate_bounds(self, initial: List[float]) -> List[tuple[float, float]]:
         low, high = self._rate_window()
@@ -332,15 +288,115 @@ class GlobalFitBatchRunner:
         if model_spec.model == "parallel":
             return ParallelModel(n_components=n_components)
         if model_spec.model == "mixed":
-            network = [
-                edge
-                for edge in model_spec.network or []
-                if edge[0] < n_components and edge[1] < n_components
-            ]
+            network = self._prepare_mixed_network(model_spec, n_components)
             if not network:
                 return None
             return MixedModel(n_components=n_components, reaction_network=network)
         return None
+
+    # ------------------------------------------------------------------
+    def _prepare_mixed_network(self, model_spec: GlobalModelSpec, n_components: int) -> List[Tuple[int, int, int]]:
+        if model_spec.network:
+            return [
+                edge
+                for edge in model_spec.network
+                if edge[0] < n_components and edge[1] < n_components
+            ]
+
+        variant = (model_spec.variant or "direct").lower()
+        edges: List[Tuple[int, int, int]] = []
+        if n_components < 2:
+            return edges
+
+        rate_idx = 0
+
+        if variant == "direct":
+            for i in range(n_components - 1):
+                edges.append((i, i + 1, rate_idx))
+                rate_idx += 1
+            if n_components > 2:
+                edges.append((0, n_components - 1, rate_idx))
+        elif variant == "reversible":
+            edges.append((0, 1, rate_idx))
+            rate_idx += 1
+            edges.append((1, 0, rate_idx))
+            rate_idx += 1
+            for i in range(1, n_components - 1):
+                edges.append((i, i + 1, rate_idx))
+                rate_idx += 1
+        else:
+            logger.warning("未知的混合模型变体: %s", variant)
+        return edges
+
+    # ------------------------------------------------------------------
+    def _resolve_model_names(
+        self, model_spec: GlobalModelSpec, n_components: int
+    ) -> Tuple[str, str]:
+        letters = [chr(ord("A") + idx) for idx in range(max(n_components, 1))]
+
+        if model_spec.type == "gla":
+            display = "GLA"
+            folder = "gla"
+        elif model_spec.model == "sequential":
+            display = "->".join(letters[:n_components])
+            folder = "sequential_" + "_to_".join(letters[:n_components])
+        elif model_spec.model == "parallel":
+            if n_components <= 1:
+                display = letters[0]
+                folder = "parallel"
+            else:
+                target = letters[n_components - 1]
+                sources = letters[: n_components - 1]
+                display = "; ".join(f"{src}->{target}" for src in sources)
+                folder = "parallel_" + "__".join(f"{src}_to_{target}" for src in sources)
+        elif model_spec.model == "mixed":
+            variant = (model_spec.variant or "direct").lower()
+            if variant == "direct":
+                display = self._format_mixed_direct_label(letters[:n_components])
+            elif variant == "reversible":
+                display = self._format_mixed_reversible_label(letters[:n_components])
+            else:
+                display = model_spec.resolved_label()
+            folder = f"mixed_{variant}_" + self._slugify(display)
+        else:
+            display = model_spec.resolved_label()
+            folder = self._slugify(display)
+
+        folder = self._slugify(folder)
+        return folder, display
+
+    def _format_mixed_direct_label(self, letters: List[str]) -> str:
+        if len(letters) <= 1:
+            return letters[0]
+        if len(letters) == 2:
+            seq_part = f"{letters[0]}->{letters[1]}"
+        else:
+            seq_part = "->".join(letters[:-1])
+        extra = f"{letters[0]}->{letters[-1]}" if len(letters) > 2 else None
+        if extra:
+            return f"{seq_part}; {extra}"
+        return seq_part
+
+    def _format_mixed_reversible_label(self, letters: List[str]) -> str:
+        if len(letters) <= 1:
+            return letters[0]
+        parts = [f"{letters[0]}<->{letters[1]}"]
+        for idx in range(1, len(letters) - 1):
+            parts.append(f"{letters[idx]}->{letters[idx + 1]}")
+        return "; ".join(parts)
+
+    def _slugify(self, text: str) -> str:
+        replacements = [
+            ("<->", "_rev_"),
+            ("->", "_to_"),
+            (";", "__"),
+        ]
+        for old, new in replacements:
+            text = text.replace(old, new)
+        text = text.replace(" ", "_")
+        sanitized = "".join(ch for ch in text if ch.isalnum() or ch in {"_", "-"})
+        sanitized = sanitized.strip("_-")
+        return sanitized.lower() or "model"
 
     # ------------------------------------------------------------------
     def _sort_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

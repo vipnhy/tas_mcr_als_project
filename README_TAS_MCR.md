@@ -388,15 +388,14 @@ python auto_workflow.py --mcr_results ../../results --method gta --model sequent
 python auto_workflow.py --mcr_results ../../results --method gta --model parallel
 ```
 
-全局拟合结果将保存在 `results/global_fit/` 目录下:
+全局拟合结果将保存在 `results/global_fit/` 目录下 (默认仅运行 GTA 模型):
 ```
 results/global_fit/
-├── gla/                          # GLA结果
-├── gta_sequential/               # GTA顺序模型结果
-├── gta_parallel/                 # GTA平行模型结果
-├── comparison_mcr_gla.png        # MCR vs GLA比较图
-├── comparison_mcr_gta_sequential.png
-└── comparison_mcr_gta_parallel.png
+├── sequential_<pathway>/         # 顺序模型结果 (如 sequential_a_to_b_to_c)
+├── parallel_<branches>/          # 平行模型结果 (如 parallel_a_to_c__b_to_c)
+├── mixed_direct_<pathway>/       # 混合模型 - 直接
+├── mixed_reversible_<pathway>/   # 混合模型 - 可逆
+└── comparison_mcr_*.png          # 对比图表
 ```
 
 ### 方法比较

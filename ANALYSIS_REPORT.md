@@ -287,15 +287,11 @@ results/
 ├── pure_spectra.csv                  # MCR-ALS光谱矩阵
 ├── lof_history.csv                   # MCR-ALS收敛历史
 └── global_fit/                       # 全局拟合结果
-    ├── gla/                          # GLA结果
-    │   ├── concentration_global_fit.csv
-    │   ├── spectra_global_fit.csv
-    │   ├── gla_results.png
-    │   ├── gla_report.txt
-    │   └── global_fit_summary.json
-    ├── gta_sequential/               # GTA顺序模型
-    ├── gta_parallel/                 # GTA平行模型
-    └── comparison_*.png              # 比较图表
+  ├── sequential_<pathway>/         # 顺序模型 (如 sequential_a_to_b_to_c_to_d)
+  ├── parallel_<branches>/          # 平行模型 (如 parallel_a_to_d__b_to_d)
+  ├── mixed_direct_<pathway>/       # 混合模型-直接 (如 mixed_direct_a_to_b_to_c__a_to_d)
+  ├── mixed_reversible_<pathway>/   # 混合模型-可逆 (如 mixed_reversible_a_rev_b__b_to_c)
+  └── global_fit_summary.json       # 汇总指标
 ```
 
 ---
@@ -312,7 +308,7 @@ results/
 
 🔬 **科学洞察**:
 - 该体系表现出双时间尺度的光物理过程
-- GLA模型提供了最佳的统计拟合
+- 顺序与混合模型展示出一致的动力学路径解释
 - 为进一步的机理研究奠定了基础
 
 🚀 **技术价值**:

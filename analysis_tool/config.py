@@ -24,21 +24,10 @@ DEFAULT_SPECTRAL_RANGES: Dict[SpectralType, Tuple[float, float]] = {
 }
 
 DEFAULT_GLOBAL_MODELS: List[Dict[str, Any]] = [
-    {"type": "gla", "label": "gla"},
-    {"type": "gta", "model": "sequential", "label": "gta_sequential"},
-    {"type": "gta", "model": "parallel", "label": "gta_parallel"},
-    {
-        "type": "gta",
-        "model": "mixed",
-        "label": "gta_mixed_direct",
-        "network": [(0, 1, 0), (1, 2, 1), (0, 2, 2)],
-    },
-    {
-        "type": "gta",
-        "model": "mixed",
-        "label": "gta_mixed_reversible",
-        "network": [(0, 1, 0), (1, 2, 1), (1, 0, 2)],
-    },
+    {"type": "gta", "model": "sequential"},
+    {"type": "gta", "model": "parallel"},
+    {"type": "gta", "model": "mixed", "variant": "direct"},
+    {"type": "gta", "model": "mixed", "variant": "reversible"},
 ]
 
 
@@ -92,6 +81,7 @@ class GlobalModelSpec:
     model: Optional[Literal["sequential", "parallel", "mixed"]] = None
     network: Optional[List[Tuple[int, int, int]]] = None
     label: Optional[str] = None
+    variant: Optional[str] = None
 
     def resolved_label(self) -> str:
         if self.label:
@@ -188,18 +178,30 @@ def _normalize_models(models_raw: Sequence[Dict[str, Any]]) -> List[GlobalModelS
         model = item.get("model")
         network = item.get("network")
         label = item.get("label")
+        variant = item.get("variant")
         if model_type == "gta" and model not in {"sequential", "parallel", "mixed"}:
             raise ValueError(f"GTA 模型配置 #{idx} 缺少 model 字段或取值非法: {item}")
         if model == "mixed":
-            if not network or not isinstance(network, list):
-                raise ValueError("混合模型必须提供 network 列表")
-            network_tuples = []
-            for entry in network:
-                if len(entry) != 3:
-                    raise ValueError(f"network 元素必须为三个值: {entry}")
-                network_tuples.append((int(entry[0]), int(entry[1]), int(entry[2])))
-            network = network_tuples
-        specs.append(GlobalModelSpec(type=model_type, model=model, network=network, label=label))
+            if network:
+                if not isinstance(network, list):
+                    raise ValueError("混合模型的 network 必须是列表")
+                network_tuples = []
+                for entry in network:
+                    if len(entry) != 3:
+                        raise ValueError(f"network 元素必须为三个值: {entry}")
+                    network_tuples.append((int(entry[0]), int(entry[1]), int(entry[2])))
+                network = network_tuples
+            else:
+                network = None
+        specs.append(
+            GlobalModelSpec(
+                type=model_type,
+                model=model,
+                network=network,
+                label=label,
+                variant=variant,
+            )
+        )
     return specs
 
 

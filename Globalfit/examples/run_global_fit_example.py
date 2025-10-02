@@ -62,6 +62,16 @@ def main():
         print(f"错误: 无法准备数据 - {e}")
         print("请确保MCR-ALS结果目录存在且包含必要的文件。")
         return
+
+    component_count = data_dict['n_components']
+    letters = [chr(ord('a') + i) for i in range(max(component_count, 1))]
+    sequential_folder = "sequential_" + "_to_".join(letters[:component_count]) if component_count else "sequential"
+    if component_count <= 1:
+        parallel_folder = "parallel"
+    else:
+        target_letter = letters[component_count - 1]
+        source_letters = letters[: component_count - 1]
+        parallel_folder = "parallel_" + "__".join(f"{src}_to_{target_letter}" for src in source_letters)
     
     # ========== 步骤2: 全局寿命分析 (GLA) ==========
     print("\n步骤2: 执行全局寿命分析 (GLA)")
@@ -128,13 +138,13 @@ def main():
         gta_seq_results,
         data_dict['time_axis'],
         data_dict['wavelength_axis'],
-        save_path=os.path.join(mcr_results_dir, "global_fit", "gta_sequential_results.png"),
+        save_path=os.path.join(mcr_results_dir, "global_fit", f"{sequential_folder}_results.png"),
         show_plot=False
     )
     
     # 保存GTA结果
     interface.save_global_fit_results(gta_seq_results,
-                                     output_dir=os.path.join(mcr_results_dir, "global_fit", "gta_sequential"))
+                                     output_dir=os.path.join(mcr_results_dir, "global_fit", sequential_folder))
     
     # ========== 步骤4: 全局目标分析 (GTA) - 平行模型 ==========
     print("\n步骤4: 执行全局目标分析 (GTA) - 平行反应模型")
@@ -163,13 +173,13 @@ def main():
         gta_par_results,
         data_dict['time_axis'],
         data_dict['wavelength_axis'],
-        save_path=os.path.join(mcr_results_dir, "global_fit", "gta_parallel_results.png"),
+        save_path=os.path.join(mcr_results_dir, "global_fit", f"{parallel_folder}_results.png"),
         show_plot=False
     )
     
     # 保存GTA结果
     interface.save_global_fit_results(gta_par_results,
-                                     output_dir=os.path.join(mcr_results_dir, "global_fit", "gta_parallel"))
+                                     output_dir=os.path.join(mcr_results_dir, "global_fit", parallel_folder))
     
     # ========== 步骤5: 比较不同方法的结果 ==========
     print("\n步骤5: 比较MCR-ALS和全局拟合结果")
@@ -217,13 +227,13 @@ def main():
     # 导出GTA(顺序)报告
     export_results_to_txt(
         gta_seq_results,
-        os.path.join(mcr_results_dir, "global_fit", "gta_sequential_report.txt")
+        os.path.join(mcr_results_dir, "global_fit", f"{sequential_folder}_report.txt")
     )
     
     # 导出GTA(平行)报告
     export_results_to_txt(
         gta_par_results,
-        os.path.join(mcr_results_dir, "global_fit", "gta_parallel_report.txt")
+        os.path.join(mcr_results_dir, "global_fit", f"{parallel_folder}_report.txt")
     )
     
     # ========== 总结 ==========

@@ -2,7 +2,7 @@
 
 ## 概述
 
-Globalfit模块已成功集成到TAS MCR-ALS项目中，提供从MCR-ALS分析到全局拟合的无缝工作流程。该模块实现了全局寿命分析(GLA)和全局目标分析(GTA)，使MCR-ALS的输出结果可以自动化地用于更精确的动力学分析。
+Globalfit模块已成功集成到TAS MCR-ALS项目中，提供从MCR-ALS分析到全局拟合的无缝工作流程。模块同时支持全局寿命分析(GLA)和全局目标分析(GTA)，但当前默认工作流仅运行 GTA 模型，以突出具有清晰动力学路径的目标分析结果。
 
 ## 集成特点
 
@@ -86,9 +86,10 @@ python Globalfit/examples/auto_workflow.py --mcr_results results
 结果保存在 `results/global_fit/` 目录:
 ```
 results/global_fit/
-├── gla/                          # GLA分析结果
-├── gta_sequential/               # GTA顺序模型
-├── gta_parallel/                 # GTA平行模型
+├── sequential_<pathway>/         # 顺序模型 (如 sequential_a_to_b_to_c)
+├── parallel_<branches>/          # 平行模型 (如 parallel_a_to_c__b_to_c)
+├── mixed_direct_<pathway>/       # 混合模型-直接
+├── mixed_reversible_<pathway>/   # 混合模型-可逆
 └── comparison_mcr_*.png          # 比较图
 ```
 
@@ -270,39 +271,50 @@ pip install lmfit
 
 ## 输出结果说明
 
-### GLA输出
+全局拟合现聚焦于 GTA 家族 (目标分析)。不同模型会按照动力学路径生成易读的目录名称。
 
-文件结构:
-```
-gla/
-├── concentration_global_fit.csv  # 拟合浓度矩阵
-├── spectra_global_fit.csv        # DAS (衰减关联光谱)
-├── data_reconstructed.csv        # 重构数据
-├── residuals.csv                 # 残差矩阵
-├── global_fit_summary.json       # 摘要信息
-├── fit_report.txt                # 详细拟合报告
-├── gla_results.png               # 结果图表
-└── gla_report.txt                # 文本报告
-```
+### 顺序模型 (Sequential)
 
-### GTA输出
-
-文件结构:
+示例文件结构:
 ```
-gta_sequential/
+sequential_a_to_b_to_c/
 ├── concentration_global_fit.csv  # 拟合浓度矩阵
 ├── spectra_global_fit.csv        # SAS (物种关联光谱)
 ├── data_reconstructed.csv        # 重构数据
 ├── residuals.csv                 # 残差矩阵
-├── global_fit_summary.json       # 包含速率常数
+├── global_fit_summary.json       # 速率常数摘要
 ├── fit_report.txt                # 详细拟合报告
-├── gta_sequential_results.png    # 结果图表
-└── gta_sequential_report.txt     # 文本报告
+├── sequential_a_to_b_to_c_results.png
+└── sequential_a_to_b_to_c_report.txt
 ```
+
+### 平行模型 (Parallel)
+
+示例文件结构:
+```
+parallel_a_to_c__b_to_c/
+├── concentration_global_fit.csv
+├── spectra_global_fit.csv
+├── data_reconstructed.csv
+├── residuals.csv
+├── global_fit_summary.json
+├── fit_report.txt
+├── parallel_a_to_c__b_to_c_results.png
+└── parallel_a_to_c__b_to_c_report.txt
+```
+
+### 混合模型 (Mixed)
+
+根据 `variant` 不同，目录命名可能以 `mixed_direct_` 或 `mixed_reversible_` 开头：
+```
+mixed_direct_a_to_b_to_c__a_to_d/
+mixed_reversible_a_rev_b__b_to_c/
+```
+目录下的文件结构与顺序模型类似。
 
 ## 性能特点
 
-- **速度**: GLA拟合通常 < 1秒, GTA拟合 < 10秒
+- **速度**: 顺序与平行模型通常 < 10秒, 混合模型视网络规模而定
 - **精度**: 合成数据测试误差 < 0.1%
 - **稳定性**: 已通过多种数据集验证
 - **可扩展性**: 支持自定义动力学模型

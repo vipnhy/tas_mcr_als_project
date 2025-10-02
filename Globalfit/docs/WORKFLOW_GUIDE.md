@@ -131,22 +131,17 @@ python auto_workflow.py \
 ```
 results/
 └── global_fit/
-    ├── gla/                          # GLA结果
-    │   ├── gla_results.png
-    │   ├── gla_report.txt
-    │   ├── concentration_global_fit.csv
-    │   ├── spectra_global_fit.csv
-    │   └── global_fit_summary.json
-    ├── gta_sequential/               # GTA顺序模型结果
-    │   ├── gta_sequential_results.png
+    ├── sequential_<pathway>/         # 顺序模型结果 (如 sequential_a_to_b_to_c)
+    │   ├── sequential_a_to_b_to_c_results.png
     │   └── ...
-    ├── gta_parallel/                 # GTA平行模型结果
-    │   ├── gta_parallel_results.png
+    ├── parallel_<branches>/          # 平行模型结果 (如 parallel_a_to_c__b_to_c)
+    │   ├── parallel_a_to_c__b_to_c_results.png
     │   └── ...
-    ├── comparison_mcr_gla.png        # MCR vs GLA比较
-    ├── comparison_mcr_gta_sequential.png
-    └── comparison_mcr_gta_parallel.png
+    ├── mixed_direct_<pathway>/       # 混合模型 - 直接
+    ├── mixed_reversible_<pathway>/   # 混合模型 - 可逆
+    └── comparison_mcr_*.png          # 对比图 (按需生成)
 ```
+> 如需保留传统的 `gla/` 结果，可在 CLI 中显式指定 `--method gla`。
 
 ### 方法B: 使用Python脚本 (灵活性更高)
 

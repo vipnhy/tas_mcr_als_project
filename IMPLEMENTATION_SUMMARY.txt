@@ -66,8 +66,8 @@ MCR-ALS分析 (run_main.py)
     ↓
 全局拟合结果 (results/global_fit/)
     ├── gla/
-    ├── gta_sequential/
-    ├── gta_parallel/
+   ├── sequential_<pathway>/
+   ├── parallel_<branches>/
     └── comparison_*.png
 
 ====================================================================
